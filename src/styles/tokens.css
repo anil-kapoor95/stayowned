@@ -1,0 +1,312 @@
+/*
+ * StayOwned design tokens — the single source of truth for the UI.
+ *
+ * Values were sampled from the Figma file "Property REntal PHP Jabber"
+ * (frames: Account Info, About Property, UploadPhotos, Ai Description, Theme, Payment).
+ *
+ * Every token declared in `@theme` is emitted as a CSS custom property on :root
+ * AND generates Tailwind utilities, e.g.
+ *   --color-primary      -> bg-primary / text-primary / border-primary
+ *   --radius-card        -> rounded-card
+ *   --shadow-card        -> shadow-card
+ *   --spacing-section    -> py-section / gap-section ...
+ *   --container-page     -> max-w-page
+ *   --text-display       -> text-display (size + line-height + tracking + weight)
+ *
+ * Change a value here and every component that uses it updates.
+ */
+
+@theme {
+  /* Drop Tailwind's default palette so only the semantic tokens below exist. */
+  --color-*: initial;
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  /* ---------------------------------------------------------------- Fonts */
+  --font-heading: var(--font-jakarta), "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-dm-sans), "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-body);
+  --font-serif: Georgia, "Times New Roman", ui-serif, serif;
+
+  /* --------------------------------------------------------------- Brand */
+  --color-primary: #ee4d1b;
+  --color-primary-hover: #d9420f;
+  --color-primary-active: #c2410c;
+  --color-primary-strong: #c2410c; /* step badge, "Entire private villa" tag */
+  --color-primary-soft: #fff1e8; /* badges, step circles, tints */
+  --color-primary-tint: #fbf6f4; /* highlighted cards */
+  --color-primary-subtle: #ffd5c8;
+  --color-on-primary: #ffffff;
+  --color-primary-on-dark: #f28a4b; /* orange text on navy panels */
+
+  --color-secondary: #1b2150; /* navy ink: dark panels, Pro badges, Upgrade buttons */
+  --color-secondary-hover: #111b4f;
+  --color-secondary-active: #0c1440;
+  --color-on-secondary: #ffffff;
+  --color-secondary-panel-from: #1b2150;
+  --color-secondary-panel-to: #3b314f;
+
+  --color-accent: #34d399; /* "live" status dot */
+
+  /* ---------------------------------------------------------- Backgrounds */
+  --color-background: #f7f8fc;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f0f2f8;
+  --color-surface-sunken: #f1f3f5;
+  --color-card: #ffffff;
+  --color-overlay: rgb(17 27 79 / 0.6);
+  --color-header-bg: #ffffff;
+  --color-footer-bg: #111b4f;
+  --color-footer-heading: #ffffff;
+  --color-footer-text: #aeb4d6;
+  --color-footer-divider: rgb(255 255 255 / 0.1);
+
+  /* ---------------------------------------------------------- Typography */
+  --color-heading: #1b2150;
+  --color-nav: #111b4f;
+  --color-body: #5a6082;
+  --color-body-strong: #475569;
+  --color-muted: #8a8fab;
+  --color-placeholder: #9aa0bd;
+  --color-on-dark: #ffffff;
+  --color-on-dark-muted: #cbd5e1;
+
+  /* ------------------------------------------------------ Borders & focus */
+  --color-border: #e3e6f0;
+  --color-border-strong: #c9cee0;
+  --color-divider: #e6e8f0;
+  --color-focus: #ee4d1b;
+  --color-focus-ring: rgb(238 77 27 / 0.22);
+
+  /* -------------------------------------------------------------- Links */
+  --color-link: #1b2150;
+  --color-link-hover: #ee4d1b;
+
+  /* ---------------------------------------------------- Inputs & filters */
+  --color-input-bg: #ffffff;
+  --color-input-border: #e3e6f0;
+  --color-input-border-hover: #c9cee0;
+  --color-input-disabled: #f0f2f8;
+  --color-chip-bg: #ffffff;
+  --color-chip-border: #e3e6f0;
+  --color-chip-text: #1b2150;
+  --color-chip-selected-bg: #fff1e8;
+  --color-chip-selected-border: #ee4d1b;
+  --color-chip-selected-text: #c2410c;
+  --color-tag-bg: #f1f5f9;
+
+  /* ------------------------------------------------------------- States */
+  --color-success: #059669;
+  --color-success-soft: #ecfdf5;
+  --color-success-strong: #0e8a42;
+  --color-warning: #9a3412;
+  --color-warning-soft: #fff1e8;
+  --color-error: #b91c1c;
+  --color-error-soft: #fef2f2;
+  --color-info: #1d4ed8;
+  --color-info-soft: #eff6ff;
+  --color-rating: #fcd34d;
+
+  /* ------------------------------------- Browser-window mock (preview card) */
+  --color-window-close: #ff5f57;
+  --color-window-minimise: #febc2e;
+  --color-window-zoom: #28c840;
+  --color-image-scrim: rgb(17 27 79 / 0.85);
+
+  /* ----------------------------------------------- Third-party brand marks */
+  --color-brand-stripe: #635bff;
+  --color-brand-paypal: #003087;
+  --color-brand-cashfree: #14b8a6;
+  --color-brand-payu: #a3c614;
+  --color-whatsapp: #25d366;
+  --color-whatsapp-hover: #1ebe5b;
+
+  /* ------------------------------- Theme gallery preview (Casa defaults) */
+  --color-theme-canvas: #fafafa;
+  --color-theme-hero: #ee4d1b;
+  --color-theme-thumb: #eaeaea;
+  --color-theme-cta: #ffd5c8;
+  --color-theme-cta-text: #c2410c;
+  --color-theme-title: #1e293b;
+
+  /* ----------------------------------------------------- Type scale (rem) */
+  --text-micro: 0.625rem;
+  --text-micro--line-height: 1.3;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1.4;
+  --text-small: 0.875rem;
+  --text-small--line-height: 1.5;
+  --text-base: 1rem;
+  --text-base--line-height: 1.6;
+  --text-lead: 1.0625rem;
+  --text-lead--line-height: 1.6;
+  --text-title: 1.1875rem; /* card titles: "Set up payments" */
+  --text-title--line-height: 1.35;
+  --text-title--font-weight: 700;
+  --text-logo: 1.3125rem;
+  --text-logo--line-height: 1;
+  --text-logo--letter-spacing: -0.03em;
+  --text-logo--font-weight: 800;
+  --text-stat: 1.375rem; /* counter values, prices */
+  --text-stat--line-height: 1.2;
+  --text-stat--font-weight: 800;
+  --text-section: clamp(1.5rem, 1.2rem + 1vw, 1.875rem); /* section titles */
+  --text-section--line-height: 1.2;
+  --text-section--letter-spacing: -0.02em;
+  --text-section--font-weight: 800;
+  --text-display: clamp(1.75rem, 1.35rem + 1.5vw, 2.25rem); /* page H1 */
+  --text-display--line-height: 1.15;
+  --text-display--letter-spacing: -0.03em;
+  --text-display--font-weight: 800;
+  --text-hero: clamp(2.25rem, 1.5rem + 3vw, 3.5rem); /* "Green Casa is live." */
+  --text-hero--line-height: 1.08;
+  --text-hero--letter-spacing: -0.035em;
+  --text-hero--font-weight: 800;
+  --text-eyebrow: 0.8125rem;
+  --text-eyebrow--line-height: 1.3;
+  --text-eyebrow--letter-spacing: 0.06em;
+  --text-eyebrow--font-weight: 700;
+  --text-menu: 0.9375rem;
+  --text-menu--line-height: 1.4;
+  --text-button: 0.9375rem;
+  --text-button--line-height: 1.2;
+
+  /* ---------------------------------------------------- Spacing & layout */
+  --spacing-gutter: 1rem; /* page side padding on phones */
+  --spacing-gutter-lg: 2rem;
+  --spacing-section: clamp(2.5rem, 1.5rem + 3vw, 4.5rem);
+  --spacing-card: clamp(1.25rem, 0.6rem + 2.6vw, 3.25rem); /* 52px on desktop */
+  --spacing-card-sm: 1.25rem;
+  --spacing-stack: 1.5rem;
+  --spacing-header: 4.75rem; /* 76px */
+  --spacing-control: 3.25rem; /* 52px input height */
+  --spacing-control-sm: 2.5rem;
+
+  --container-page: 74.25rem; /* 1188px content width */
+  --container-form: 43.375rem; /* 694px wizard card */
+  --container-aside: 29rem; /* 464px preview panel */
+  --container-prose: 42rem;
+
+  /* ------------------------------------------------------- Aspect ratios */
+  --aspect-photo: 3 / 2;
+  --aspect-thumb: 4 / 3;
+  --aspect-hero: 16 / 9;
+
+  /* -------------------------------------------------------------- Radii */
+  --radius-sm: 0.5rem;
+  --radius-input: 0.75rem;
+  --radius-button: 0.75rem;
+  --radius-chip: 0.75rem;
+  --radius-card: 1.5rem;
+  --radius-panel: 1.75rem;
+  --radius-media: 1rem;
+  --radius-device: 2.25rem;
+  --radius-device-screen: 1.625rem;
+  --radius-pill: 9999px;
+
+  /* ------------------------------------------------------------ Shadows */
+  --shadow-card: 0 1px 2px rgb(27 33 80 / 0.04), 0 10px 30px -12px rgb(27 33 80 / 0.12);
+  --shadow-panel: 0 24px 48px -24px rgb(17 27 79 / 0.45);
+  --shadow-header: 0 1px 0 rgb(27 33 80 / 0.06);
+  --shadow-button-primary: 0 8px 20px -8px rgb(238 77 27 / 0.55);
+  --shadow-popover: 0 16px 40px -12px rgb(17 27 79 / 0.3);
+
+  /* --------------------------------------------------------- Motion */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --duration-fast: 150ms;
+  --duration-base: 220ms;
+}
+
+/*
+ * Guest-page theme presets (Theme frame: Casa / Luxe / Homestay / Urban / Coastal).
+ * They only re-map semantic tokens, so every component follows automatically.
+ * Apply with <div data-theme="luxe">…</div>. "casa" is the default (no overrides).
+ */
+[data-theme="luxe"] {
+  --color-theme-canvas: #141517;
+  --color-theme-hero: #423c34;
+  --color-theme-thumb: #2b2b2b;
+  --color-theme-cta: #c8a97e;
+  --color-theme-cta-text: #141517;
+  --color-theme-title: #e7e5e4;
+  --color-primary: #c8a97e;
+  --color-primary-hover: #b8986c;
+  --color-primary-active: #a6875c;
+  --color-primary-strong: #c8a97e;
+  --color-primary-soft: #2b2b2b;
+  --color-primary-tint: #232324;
+  --color-on-primary: #141517;
+  --color-background: #141517;
+  --color-surface: #1d1e21;
+  --color-card: #1d1e21;
+  --color-surface-muted: #2b2b2b;
+  --color-tag-bg: #2b2b2b;
+  --color-heading: #f5f1ea;
+  --color-body: #c9c4bb;
+  --color-body-strong: #e7e5e4;
+  --color-muted: #9b958c;
+  --color-border: #34343a;
+  --color-divider: #2e2f33;
+  --color-link: #e7e5e4;
+  --font-heading: var(--font-serif);
+}
+[data-theme="homestay"] {
+  --color-theme-canvas: #faf5ee;
+  --color-theme-hero: #9e734e;
+  --color-theme-thumb: #eadbce;
+  --color-theme-cta: #b76735;
+  --color-theme-cta-text: #ffffff;
+  --color-theme-title: #523a1e;
+  --color-primary: #b76735;
+  --color-primary-hover: #a1592c;
+  --color-primary-active: #8d4d25;
+  --color-primary-strong: #9e734e;
+  --color-primary-soft: #eadbce;
+  --color-primary-tint: #f6ede3;
+  --color-background: #faf5ee;
+  --color-surface-muted: #f3e9de;
+  --color-tag-bg: #f3e9de;
+  --color-heading: #523a1e;
+  --color-body: #6f5a45;
+  --color-border: #e5ded4;
+}
+[data-theme="urban"] {
+  --color-theme-canvas: #f3f4f6;
+  --color-theme-hero: #687c94;
+  --color-theme-thumb: #d6dbe1;
+  --color-theme-cta: #2b4c7e;
+  --color-theme-cta-text: #ffffff;
+  --color-theme-title: #1e293b;
+  --color-primary: #2b4c7e;
+  --color-primary-hover: #223e69;
+  --color-primary-active: #1a3155;
+  --color-primary-strong: #687c94;
+  --color-primary-soft: #e5e9ef;
+  --color-primary-tint: #f3f4f6;
+  --color-background: #f3f4f6;
+  --color-surface-muted: #e5e9ef;
+  --color-heading: #1e293b;
+  --color-body: #475569;
+  --color-border: #d6dbe1;
+}
+[data-theme="coastal"] {
+  --color-theme-canvas: #ebf4f3;
+  --color-theme-hero: #4e8380;
+  --color-theme-thumb: #c9dfdc;
+  --color-theme-cta: #1d5451;
+  --color-theme-cta-text: #ffffff;
+  --color-theme-title: #173d3b;
+  --color-primary: #1d5451;
+  --color-primary-hover: #174643;
+  --color-primary-active: #113735;
+  --color-primary-strong: #4e8380;
+  --color-primary-soft: #c9dfdc;
+  --color-primary-tint: #ebf4f3;
+  --color-background: #ebf4f3;
+  --color-surface-muted: #d9ebe8;
+  --color-tag-bg: #d9ebe8;
+  --color-heading: #173d3b;
+  --color-body: #44605e;
+  --color-border: #c9dfdc;
+  --font-heading: var(--font-serif);
+}
