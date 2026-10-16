@@ -20,7 +20,7 @@ export default function NotFound() {
       </p>
       <div className="mt-8 flex flex-wrap justify-center gap-3">
         <Button href="/properties">Browse stays</Button>
-        <Button href="/" variant="outline">
+        <Button href="/setup/account" variant="outline">
           Create your booking page
         </Button>
       </div>

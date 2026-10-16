@@ -34,7 +34,7 @@ export default function PropertiesPage({ searchParams }: PageProps<"/properties"
             Every listing here is a host&apos;s own StayOwned page — book with them directly, with 0% commission.
           </p>
         </div>
-        <Button href="/" variant="outline" className="self-start sm:self-auto">
+        <Button href="/setup/account" variant="outline" className="self-start sm:self-auto">
           List your property <Icon name="arrowRight" size={16} />
         </Button>
       </div>

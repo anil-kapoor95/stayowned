@@ -36,7 +36,8 @@ runtime dependencies.
 
 | Route | Source | Notes |
 | --- | --- | --- |
-| `/` | Figma "Account Info" | Sign-up form with validation, strength meter, live preview panel |
+| `/` | — | No home page designed yet: redirects to `/setup/account` |
+| `/setup/account` | Figma "Account Info" | Sign-up form with validation, strength meter, live preview panel |
 | `/setup/property` | Figma "About PRoperty" | Airbnb import (demo), type, location, counters, amenities, price, page link |
 | `/setup/photos` | Figma "UploadPhotos" | Drag-and-drop/browse (local only), reorder, remove, cover photo |
 | `/setup/description` | Figma "Ai Description" | Tone, rewrite, inline edit, FAQ editor (template-generated copy) |

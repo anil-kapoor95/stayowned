@@ -35,7 +35,7 @@ export const mainNav: NavItem[] = [
 
 export const authNav = {
   login: { label: "Log in", href: "/login" },
-  cta: { label: "Create free page", href: "/" },
+  cta: { label: "Create free page", href: "/setup/account" },
 } as const;
 
 export const footerNav: { title: string; items: NavItem[] }[] = [

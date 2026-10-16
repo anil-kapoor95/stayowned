@@ -25,7 +25,7 @@ export default function ThemesPage() {
         ))}
       </ul>
       <div className="mt-8 flex flex-wrap gap-3">
-        <Button href="/">Create free page</Button>
+        <Button href="/setup/account">Create free page</Button>
         <Button href="/properties" variant="outline">
           See live example pages
         </Button>

@@ -28,7 +28,7 @@ export function PlaceholderPage({ slug }: { slug: PlaceholderSlug }) {
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <Button href="/">Create free page</Button>
+          <Button href="/setup/account">Create free page</Button>
           <Button href="/contact" variant="outline">
             Contact us
           </Button>

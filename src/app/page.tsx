@@ -1,40 +1,10 @@
-import { JsonLd } from "@/components/seo/JsonLd";
-import { siteConfig } from "@/config/site";
-import { pageMetadata } from "@/lib/seo";
-import { AccountStep } from "@/features/onboarding/steps/AccountStep";
-import { WizardShell } from "@/features/onboarding/components/WizardShell";
-import {
-  AccountPanelBenefits,
-  AccountPanelIntro,
-  PreviewPanel,
-} from "@/features/onboarding/components/PreviewPanel";
+import { redirect } from "next/navigation";
+import { ACCOUNT_HREF } from "@/features/onboarding/steps";
 
-export const metadata = pageMetadata({
-  title: `${siteConfig.name} — create your own booking page for free`,
-  description: siteConfig.description,
-  path: "/",
-});
-
+/**
+ * No home page is designed yet, so the root URL sends visitors to the first
+ * onboarding step (temporary 307). Replace this file when a home page exists.
+ */
 export default function HomePage() {
-  return (
-    <>
-      <WizardShell
-        step="account"
-        aside={<PreviewPanel variant="details" intro={<AccountPanelIntro />} footer={<AccountPanelBenefits />} />}
-      >
-        <AccountStep />
-      </WizardShell>
-      {siteConfig.url ? (
-        <JsonLd
-          data={{
-            "@context": "https://schema.org",
-            "@type": "WebSite",
-            name: siteConfig.name,
-            url: siteConfig.url,
-            description: siteConfig.description,
-          }}
-        />
-      ) : null}
-    </>
-  );
+  redirect(ACCOUNT_HREF);
 }
