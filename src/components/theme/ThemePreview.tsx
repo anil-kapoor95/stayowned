@@ -42,7 +42,7 @@ export function ThemePreview({
         <p className={cn("text-white", theme.serif ? "font-serif" : "font-body font-bold", large ? "text-section" : "text-base")}>
           {theme.previewHeadline}
         </p>
-        <p className="text-caption text-white/85">{place}</p>
+        <p className="text-caption text-white">{place}</p>
       </div>
       <div className="mt-2.5 grid grid-cols-3 gap-2">
         {[0, 1, 2].map((item) => (

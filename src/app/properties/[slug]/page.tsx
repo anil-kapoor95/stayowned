@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { PropertyDetails } from "@/components/property/PropertyDetails";
 import { propertyRepository } from "@/lib/properties/repository";
-import { pageMetadata } from "@/lib/seo";
+import { pageMetadata, truncate } from "@/lib/seo";
 
 export async function generateStaticParams() {
   const slugs = await propertyRepository.listSlugs();
@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: PageProps<"/properties/[slug]
   const cover = property.images[0];
   return pageMetadata({
     title: `${property.name} — ${property.summary} in ${property.location.locality}`,
-    description: `${property.headline}. ${property.description}`.slice(0, 158),
+    description: truncate(`${property.headline}. ${property.description}`),
     path: `/properties/${property.slug}`,
     images: cover ? [{ url: cover.src, width: cover.width, height: cover.height, alt: cover.alt }] : undefined,
   });

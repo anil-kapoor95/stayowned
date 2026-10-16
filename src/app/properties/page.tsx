@@ -56,6 +56,7 @@ async function Results({ searchParams }: { searchParams: PageProps<"/properties"
       <div className="mt-8">
         <PropertyFilters query={query} />
       </div>
+      <h2 className="sr-only">Search results</h2>
       <p className="mt-6 text-small text-body" role="status">
         {result.total === 0
           ? "No stays found"

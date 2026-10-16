@@ -14,7 +14,7 @@ export function Logo({ inverted = false, className }: { inverted?: boolean; clas
       aria-label={`${siteConfig.name} — home`}
     >
       <span className={inverted ? "text-on-dark" : "text-nav"}>Stay</span>
-      <span className="text-primary">Owned</span>
+      <span className="text-brand">Owned</span>
     </Link>
   );
 }

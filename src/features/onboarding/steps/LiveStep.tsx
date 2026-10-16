@@ -53,7 +53,7 @@ export function LiveStep() {
           </p>
           <h1 id="live-title" className="mt-5 text-hero text-on-dark">
             {property.name} is{" "}
-            <span className="text-primary underline decoration-wavy decoration-from-font underline-offset-8">
+            <span className="text-brand underline decoration-wavy decoration-from-font underline-offset-8">
               {draft.published ? "live" : "ready"}
             </span>
             .

@@ -10,7 +10,7 @@ import {
 } from "@/features/onboarding/components/PreviewPanel";
 
 export const metadata = pageMetadata({
-  title: "Create your own booking page for free",
+  title: `${siteConfig.name} — create your own booking page for free`,
   description: siteConfig.description,
   path: "/",
 });

@@ -32,9 +32,14 @@
    * Rebranding: change the primary scale together (primary, -hover, -active,
    * -strong, -soft, -tint, -subtle, -on-dark). Focus ring and button shadow
    * derive from it automatically. */
-  --color-primary: #ee4d1b;
-  --color-primary-hover: #d9420f;
-  --color-primary-active: #c2410c;
+  /* Figma brand orange. Used where WCAG allows 3:1 (logo, large display text, decoration). */
+  --color-brand: #ee4d1b;
+  /* Figma uses #ee4d1b for buttons too, but white 15px text on it is only 3.67:1
+   * (WCAG AA needs 4.5:1). This is the closest accessible shade. To match Figma
+   * exactly at the cost of contrast, set it to var(--color-brand). */
+  --color-primary: #cc3c0f;
+  --color-primary-hover: #b5340c;
+  --color-primary-active: #9f2e0a;
   --color-primary-strong: #c2410c; /* step badge, "Entire private villa" tag */
   --color-primary-soft: #fff1e8; /* badges, step circles, tints */
   --color-primary-tint: #fbf6f4; /* highlighted cards */
@@ -69,7 +74,7 @@
   --color-nav: #111b4f;
   --color-body: #5a6082;
   --color-body-strong: #475569;
-  --color-muted: #8a8fab;
+  --color-muted: #666d8f; /* Figma #8a8fab darkened for 4.5:1 contrast */
   --color-placeholder: #9aa0bd;
   --color-on-dark: #ffffff;
   --color-on-dark-muted: #cbd5e1;
@@ -78,7 +83,7 @@
   --color-border: #e3e6f0;
   --color-border-strong: #c9cee0;
   --color-divider: #e6e8f0;
-  --color-focus: #ee4d1b;
+  --color-focus: #cc3c0f;
   --color-focus-ring: color-mix(in srgb, var(--color-focus) 22%, transparent);
 
   /* -------------------------------------------------------------- Links */
@@ -99,9 +104,9 @@
   --color-tag-bg: #f1f5f9;
 
   /* ------------------------------------------------------------- States */
-  --color-success: #059669;
+  --color-success: #04825b;
   --color-success-soft: #ecfdf5;
-  --color-success-strong: #0e8a42;
+  --color-success-strong: #0d833f;
   --color-warning: #9a3412;
   --color-warning-soft: #fff1e8;
   --color-error: #b91c1c;
@@ -121,15 +126,16 @@
   --color-brand-paypal: #003087;
   --color-brand-cashfree: #14b8a6;
   --color-brand-payu: #a3c614;
-  --color-whatsapp: #25d366;
-  --color-whatsapp-hover: #1ebe5b;
+  /* WhatsApp green #25d366 only reaches 1.98:1 with white text; darker accessible shade. */
+  --color-whatsapp: #188741;
+  --color-whatsapp-hover: #13703a;
 
   /* ------------------------------- Theme gallery preview (Casa defaults) */
   --color-theme-canvas: #fafafa;
-  --color-theme-hero: #ee4d1b;
+  --color-theme-hero: #cc3c0f;
   --color-theme-thumb: #eaeaea;
   --color-theme-cta: #ffd5c8;
-  --color-theme-cta-text: #c2410c;
+  --color-theme-cta-text: #af3b0b;
   --color-theme-title: #1e293b;
 
   /* ----------------------------------------------------- Type scale (rem) */
@@ -251,6 +257,7 @@
   --color-border: #34343a;
   --color-divider: #2e2f33;
   --color-link: #e7e5e4;
+  --color-success: #05986b;
   --color-input-bg: #232324;
   --color-input-border: #3a3a40;
   --color-input-border-hover: #55555c;
@@ -261,15 +268,15 @@
 }
 [data-theme="homestay"] {
   --color-theme-canvas: #faf5ee;
-  --color-theme-hero: #9e734e;
+  --color-theme-hero: #976e4b;
   --color-theme-thumb: #eadbce;
-  --color-theme-cta: #b76735;
+  --color-theme-cta: #af6333;
   --color-theme-cta-text: #ffffff;
   --color-theme-title: #523a1e;
-  --color-primary: #b76735;
+  --color-primary: #af6333;
   --color-primary-hover: #a1592c;
   --color-primary-active: #8d4d25;
-  --color-primary-strong: #9e734e;
+  --color-primary-strong: #7c5a3d;
   --color-primary-soft: #eadbce;
   --color-primary-tint: #f6ede3;
   --color-background: #faf5ee;
@@ -281,7 +288,7 @@
 }
 [data-theme="urban"] {
   --color-theme-canvas: #f3f4f6;
-  --color-theme-hero: #687c94;
+  --color-theme-hero: #657890;
   --color-theme-thumb: #d6dbe1;
   --color-theme-cta: #2b4c7e;
   --color-theme-cta-text: #ffffff;
@@ -289,7 +296,7 @@
   --color-primary: #2b4c7e;
   --color-primary-hover: #223e69;
   --color-primary-active: #1a3155;
-  --color-primary-strong: #687c94;
+  --color-primary-strong: #596a7f;
   --color-primary-soft: #e5e9ef;
   --color-primary-tint: #f3f4f6;
   --color-background: #f3f4f6;
@@ -300,7 +307,7 @@
 }
 [data-theme="coastal"] {
   --color-theme-canvas: #ebf4f3;
-  --color-theme-hero: #4e8380;
+  --color-theme-hero: #4b7e7b;
   --color-theme-thumb: #c9dfdc;
   --color-theme-cta: #1d5451;
   --color-theme-cta-text: #ffffff;
@@ -308,7 +315,7 @@
   --color-primary: #1d5451;
   --color-primary-hover: #174643;
   --color-primary-active: #113735;
-  --color-primary-strong: #4e8380;
+  --color-primary-strong: #3d6664;
   --color-primary-soft: #c9dfdc;
   --color-primary-tint: #ebf4f3;
   --color-background: #ebf4f3;

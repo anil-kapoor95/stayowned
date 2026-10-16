@@ -46,3 +46,10 @@ export function pageMetadata({
     robots: noindex ? { index: false, follow: true } : undefined,
   };
 }
+
+/** Shortens text to a meta-description length on a word boundary. */
+export function truncate(text: string, max = 158): string {
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max - 1);
+  return `${cut.slice(0, cut.lastIndexOf(" ")).replace(/[,.;:\s]+$/, "")}…`;
+}
