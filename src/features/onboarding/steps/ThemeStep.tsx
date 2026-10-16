@@ -38,7 +38,7 @@ export function ThemeStep() {
         </Button>
       </div>
 
-      <ul className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3" aria-label="Themes">
+      <ul className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3" aria-label="Themes">
         {THEMES.map((theme) => {
           const selected = draft.theme === theme.id;
           return (
@@ -50,7 +50,7 @@ export function ThemeStep() {
               )}
             >
               <ThemePreview theme={theme} propertyName={name} place={place} />
-              <div className="mt-4 flex items-end justify-between gap-3">
+              <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
                 <div className="min-w-0">
                   <h2 className="flex items-center gap-2 font-heading text-base font-bold text-heading">
                     {theme.name}

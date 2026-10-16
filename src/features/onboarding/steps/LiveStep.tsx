@@ -44,16 +44,19 @@ export function LiveStep() {
     <div className="container-page py-8 sm:py-10">
       <section
         aria-labelledby="live-title"
-        className="panel-gradient grid gap-8 overflow-hidden rounded-panel p-6 text-on-dark shadow-panel sm:p-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-center lg:p-14"
+        className="panel-gradient grid grid-cols-1 gap-8 overflow-hidden rounded-panel p-6 text-on-dark shadow-panel sm:p-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-center lg:p-14"
       >
-        <div>
+        <div className="min-w-0">
           <p className="inline-flex items-center gap-2 rounded-pill border border-accent/40 bg-accent/10 px-3 py-1 text-caption font-bold uppercase tracking-wide text-accent">
             <span className="size-2 rounded-pill bg-accent" aria-hidden="true" />
             {draft.published ? "Published & accepting bookings" : "Preview — not published yet"}
           </p>
           <h1 id="live-title" className="mt-5 text-hero text-on-dark">
             {property.name} is{" "}
-            <span className="text-primary underline decoration-wavy decoration-from-font underline-offset-8">live</span>.
+            <span className="text-primary underline decoration-wavy decoration-from-font underline-offset-8">
+              {draft.published ? "live" : "ready"}
+            </span>
+            .
           </h1>
           <p className="mt-4 max-w-xl text-lead text-on-dark-muted">
             Your page is ready to share. Send your direct link to guests messaging you on WhatsApp or Instagram to skip OTA
@@ -101,7 +104,7 @@ export function LiveStep() {
         </Notice>
       ) : null}
 
-      <div className="mt-10 grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_21rem]">
+      <div className="mt-10 grid grid-cols-1 items-start gap-7 lg:grid-cols-[minmax(0,1fr)_21rem]">
         <section aria-labelledby="checklist-title">
           <p className="text-eyebrow uppercase text-primary">Checklist to launch</p>
           <h2 id="checklist-title" className="mt-1 text-section">

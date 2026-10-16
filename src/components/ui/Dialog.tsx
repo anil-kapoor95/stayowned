@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, type KeyboardEventHandler, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { Icon } from "./Icon";
 
@@ -16,7 +16,9 @@ export function Dialog({
   children,
   className,
   size = "md",
+  onKeyDown,
 }: {
+  onKeyDown?: KeyboardEventHandler<HTMLDialogElement>;
   open: boolean;
   onClose: () => void;
   title: string;
@@ -46,6 +48,7 @@ export function Dialog({
       ref={ref}
       aria-labelledby={titleId}
       onClose={onClose}
+      onKeyDown={onKeyDown}
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}

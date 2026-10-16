@@ -42,7 +42,7 @@ export function FieldShell({
   srOnlyLabel,
 }: FieldShellProps) {
   return (
-    <div className={cn("flex flex-col gap-2", className)}>
+    <div className={cn("flex min-w-0 flex-col gap-2", className)}>
       <div className={cn("flex items-baseline justify-between gap-3", srOnlyLabel && "sr-only")}>
         <label htmlFor={id} className="text-small font-semibold text-heading">
           {label}

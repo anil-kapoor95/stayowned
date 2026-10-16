@@ -43,7 +43,7 @@ export function LivePreviewCard({ property, variant }: { property: Property; var
         {cover ? (
           <SafeImage src={cover.src} alt={cover.alt} fill sizes="(min-width: 1024px) 400px, 90vw" className="object-cover" />
         ) : null}
-        <div className="absolute inset-0 bg-gradient-to-t from-image-scrim via-image-scrim/20 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-image-scrim via-image-scrim/45 via-45% to-transparent" />
         {variant === "phone" && rating ? (
           <RatingPill rating={rating} className="absolute left-3 top-3" />
         ) : null}

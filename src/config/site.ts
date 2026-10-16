@@ -45,6 +45,7 @@ export const footerNav: { title: string; items: NavItem[] }[] = [
       { label: "How it works", href: "/how-it-works" },
       { label: "Themes", href: "/themes" },
       { label: "Pricing", href: "/pricing" },
+      { label: "Example pages", href: "/properties" },
     ],
   },
   {

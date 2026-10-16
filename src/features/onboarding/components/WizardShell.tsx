@@ -23,7 +23,7 @@ export function WizardShell({
       <WizardStepper current={step} />
       <div
         className={cn(
-          "mt-6 grid items-start gap-7 sm:mt-8",
+          "mt-6 grid grid-cols-1 items-start gap-7 sm:mt-8",
           !wide && Boolean(aside) && "lg:grid-cols-[minmax(0,1fr)_var(--container-aside)]",
         )}
       >

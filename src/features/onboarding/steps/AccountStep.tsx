@@ -94,7 +94,7 @@ export function AccountStep() {
         <span className="h-px flex-1 bg-divider" />
       </div>
 
-      <form noValidate onSubmit={onSubmit} className="grid gap-5">
+      <form noValidate onSubmit={onSubmit} className="grid grid-cols-1 gap-5">
         <TextField
           id="account-name"
           label="Your name"

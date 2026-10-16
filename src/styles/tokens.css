@@ -28,7 +28,10 @@
   --font-sans: var(--font-body);
   --font-serif: Georgia, "Times New Roman", ui-serif, serif;
 
-  /* --------------------------------------------------------------- Brand */
+  /* --------------------------------------------------------------- Brand
+   * Rebranding: change the primary scale together (primary, -hover, -active,
+   * -strong, -soft, -tint, -subtle, -on-dark). Focus ring and button shadow
+   * derive from it automatically. */
   --color-primary: #ee4d1b;
   --color-primary-hover: #d9420f;
   --color-primary-active: #c2410c;
@@ -76,7 +79,7 @@
   --color-border-strong: #c9cee0;
   --color-divider: #e6e8f0;
   --color-focus: #ee4d1b;
-  --color-focus-ring: rgb(238 77 27 / 0.22);
+  --color-focus-ring: color-mix(in srgb, var(--color-focus) 22%, transparent);
 
   /* -------------------------------------------------------------- Links */
   --color-link: #1b2150;
@@ -208,7 +211,7 @@
   --shadow-card: 0 1px 2px rgb(27 33 80 / 0.04), 0 10px 30px -12px rgb(27 33 80 / 0.12);
   --shadow-panel: 0 24px 48px -24px rgb(17 27 79 / 0.45);
   --shadow-header: 0 1px 0 rgb(27 33 80 / 0.06);
-  --shadow-button-primary: 0 8px 20px -8px rgb(238 77 27 / 0.55);
+  --shadow-button-primary: 0 8px 20px -8px color-mix(in srgb, var(--color-primary) 55%, transparent);
   --shadow-popover: 0 16px 40px -12px rgb(17 27 79 / 0.3);
 
   /* --------------------------------------------------------- Motion */
@@ -248,6 +251,12 @@
   --color-border: #34343a;
   --color-divider: #2e2f33;
   --color-link: #e7e5e4;
+  --color-input-bg: #232324;
+  --color-input-border: #3a3a40;
+  --color-input-border-hover: #55555c;
+  --color-input-disabled: #2b2b2b;
+  --color-placeholder: #7d786f;
+  --color-border-strong: #4a4a50;
   --font-heading: var(--font-serif);
 }
 [data-theme="homestay"] {

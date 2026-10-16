@@ -6,7 +6,7 @@ import { MobileNav, NavLinks } from "./Navigation";
 
 export function Header() {
   return (
-    <header className="sticky top-0 z-40 border-b border-divider bg-header-bg/95 backdrop-blur supports-[backdrop-filter]:bg-header-bg/85">
+    <header className="sticky top-0 z-40 border-b border-divider bg-header-bg">
       <div className="container-page flex h-header items-center justify-between gap-6">
         <Logo />
         <nav aria-label="Main" className="hidden lg:block">

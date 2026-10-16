@@ -122,7 +122,7 @@ export function PropertyStep() {
         )}
       </section>
 
-      <form noValidate onSubmit={onSubmit} className="mt-7 grid gap-6">
+      <form noValidate onSubmit={onSubmit} className="mt-7 grid grid-cols-1 gap-6">
         <TextField
           id="property-name"
           label="Property name"
