@@ -11,6 +11,7 @@ import { bookingLinkHost } from "@/config/site";
 import { cn } from "@/lib/utils";
 import { draftToProperty } from "../draft-to-property";
 import { useDraft } from "../draft-store";
+import { useSignupSession } from "../signup-session";
 import { PREVIEW_HREF } from "../steps";
 import { LivePreviewCard } from "../components/LivePreviewCard";
 
@@ -23,8 +24,13 @@ const GATEWAYS = [
 
 export function LiveStep() {
   const draft = useDraft();
+  const { state } = useSignupSession();
+  const loginUrl = state?.login_url;
+  // Companies added in the back office may not have a property yet.
+  const hasProperty = Boolean(state?.property);
   const property = draftToProperty(draft);
-  const link = `${bookingLinkHost}/${property.slug}`;
+  const slug = property.slug || "your-page";
+  const link = `${bookingLinkHost}/${slug}`;
   const [copied, setCopied] = useState(false);
   const [demoMessage, setDemoMessage] = useState<string | null>(null);
 
@@ -42,61 +48,80 @@ export function LiveStep() {
 
   return (
     <div className="container-page py-8 sm:py-10">
-      <section
-        aria-labelledby="live-title"
-        className="panel-gradient grid grid-cols-1 gap-8 overflow-hidden rounded-panel p-6 text-on-dark shadow-panel sm:p-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-center lg:p-14"
-      >
-        <div className="min-w-0">
-          <p className="inline-flex items-center gap-2 rounded-pill border border-accent/40 bg-accent/10 px-3 py-1 text-caption font-bold uppercase tracking-wide text-accent">
-            <span className="size-2 rounded-pill bg-accent" aria-hidden="true" />
-            {draft.published ? "Published & accepting bookings" : "Preview — not published yet"}
-          </p>
-          <h1 id="live-title" className="mt-5 text-hero text-on-dark">
-            {property.name} is{" "}
-            <span className="text-brand underline decoration-wavy decoration-from-font underline-offset-8">
-              {draft.published ? "live" : "ready"}
-            </span>
-            .
-          </h1>
-          <p className="mt-4 max-w-xl text-lead text-on-dark-muted">
-            Your page is ready to share. Send your direct link to guests messaging you on WhatsApp or Instagram to skip OTA
-            commissions.
-          </p>
+      {hasProperty ? (
+        <section
+          aria-labelledby="live-title"
+          className="panel-gradient grid grid-cols-1 gap-8 overflow-hidden rounded-panel p-6 text-on-dark shadow-panel sm:p-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-center lg:p-14"
+        >
+          <div className="min-w-0">
+            <p className="inline-flex items-center gap-2 rounded-pill border border-accent/40 bg-accent/10 px-3 py-1 text-caption font-bold uppercase tracking-wide text-accent">
+              <span className="size-2 rounded-pill bg-accent" aria-hidden="true" />
+              {draft.published ? "Published & accepting bookings" : "Preview — not published yet"}
+            </p>
+            <h1 id="live-title" className="mt-5 text-hero text-on-dark">
+              {property.name} is{" "}
+              <span className="text-brand underline decoration-wavy decoration-from-font underline-offset-8">
+                {draft.published ? "live" : "ready"}
+              </span>
+              .
+            </h1>
+            {state?.theme_applied === false ? (
+              <p className="mt-3 text-small text-on-dark-muted">Your plan uses the default theme for now.</p>
+            ) : null}
+            <p className="mt-4 max-w-xl text-lead text-on-dark-muted">
+              Your page is ready to share. Send your direct link to guests messaging you on WhatsApp or Instagram to skip
+              OTA commissions.
+            </p>
 
-          <div className="mt-7 flex max-w-xl items-center gap-3 rounded-input border border-white/15 bg-white/5 p-2 pl-4">
-            <Icon name="link" size={18} className="shrink-0 text-primary" />
-            <span className="min-w-0 flex-1 truncate font-semibold" id="page-link">
-              {link}
-            </span>
-            <Button variant="outline" size="md" onClick={copyLink} aria-describedby="page-link" className="border-transparent">
-              <Icon name={copied ? "check" : "copy"} size={16} />
-              {copied ? "Copied" : "Copy link"}
-            </Button>
-          </div>
-          <p className="sr-only" aria-live="polite">
-            {copied ? "Link copied to clipboard" : ""}
-          </p>
+            <div className="mt-7 flex max-w-xl items-center gap-3 rounded-input border border-white/15 bg-white/5 p-2 pl-4">
+              <Icon name="link" size={18} className="shrink-0 text-primary" />
+              <span className="min-w-0 flex-1 truncate font-semibold" id="page-link">
+                {link}
+              </span>
+              <Button
+                variant="outline"
+                size="md"
+                onClick={copyLink}
+                aria-describedby="page-link"
+                className="border-transparent"
+              >
+                <Icon name={copied ? "check" : "copy"} size={16} />
+                {copied ? "Copied" : "Copy link"}
+              </Button>
+            </div>
+            <p className="sr-only" aria-live="polite">
+              {copied ? "Link copied to clipboard" : ""}
+            </p>
 
-          <div className="mt-6 flex flex-wrap items-center gap-3">
-            <Button variant="whatsapp" size="lg" href={`https://wa.me/?text=${whatsappText}`} external>
-              <WhatsAppMark /> Share on WhatsApp
-              <span className="sr-only"> (opens in a new tab)</span>
-            </Button>
-            <Button variant="onDark" size="lg" href={PREVIEW_HREF}>
-              <Icon name="externalLink" size={17} /> View my page
-            </Button>
-            <Button href="/setup/property" variant="text" className="text-on-dark-muted underline hover:text-on-dark">
-              Edit page
-            </Button>
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <Button variant="whatsapp" size="lg" href={`https://wa.me/?text=${whatsappText}`} external>
+                <WhatsAppMark /> Share on WhatsApp
+                <span className="sr-only"> (opens in a new tab)</span>
+              </Button>
+              <Button variant="onDark" size="lg" href={PREVIEW_HREF}>
+                <Icon name="externalLink" size={17} /> View my page
+              </Button>
+              {loginUrl ? (
+                <a
+                  href={loginUrl}
+                  className="rounded-sm font-semibold text-on-dark-muted underline underline-offset-4 hover:text-on-dark focus-visible:outline-none focus-visible:focus-ring"
+                >
+                  Edit page
+                  <span className="sr-only"> in your dashboard</span>
+                </a>
+              ) : null}
+            </div>
           </div>
-        </div>
 
-        <div className="mx-auto w-full max-w-80 rounded-device border-10 border-secondary-active bg-secondary-active shadow-panel">
-          <div className="overflow-hidden rounded-device-screen">
-            <LivePreviewCard property={property} variant="phone" />
+          <div className="mx-auto w-full max-w-80 rounded-device border-10 border-secondary-active bg-secondary-active shadow-panel">
+            <div className="overflow-hidden rounded-device-screen">
+              <LivePreviewCard property={property} variant="phone" />
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      ) : (
+        <NoPropertyHero companyName={state?.company?.name || state?.account.name || "Your account"} loginUrl={loginUrl} />
+      )}
 
       {demoMessage ? (
         <Notice tone="info" role="status" className="mt-6" title="Demo mode">
@@ -120,7 +145,8 @@ export function LiveStep() {
                     Set up payments <Badge variant="warning">Needed to accept bookings</Badge>
                   </h3>
                   <p className="mt-1 text-small text-body-strong">
-                    Connect Razorpay to get paid instantly by UPI (Google Pay, PhonePe), credit/debit cards, and net banking.
+                    Connect Razorpay to get paid instantly by UPI (Google Pay, PhonePe), credit/debit cards, and net
+                    banking.
                   </p>
                 </div>
                 <Button
@@ -136,7 +162,10 @@ export function LiveStep() {
               </div>
             </li>
 
-            <li className="list-none rounded-card border border-border bg-card p-5 shadow-card sm:p-7" aria-label="More gateways on Pro">
+            <li
+              className="list-none rounded-card border border-border bg-card p-5 shadow-card sm:p-7"
+              aria-label="More gateways on Pro"
+            >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h3 className="font-heading text-title">More Gateways on pro</h3>
                 <Link
@@ -149,8 +178,12 @@ export function LiveStep() {
               <ul className="mt-5 grid gap-3 sm:grid-cols-2">
                 {GATEWAYS.map((gateway) => (
                   <li key={gateway.name} className="flex gap-3 rounded-input border border-border bg-background p-4">
-                    
-                    <span className={cn("grid size-9 shrink-0 place-items-center rounded-sm font-bold text-white", gateway.tone)}>
+                    <span
+                      className={cn(
+                        "grid size-9 shrink-0 place-items-center rounded-sm font-bold text-white",
+                        gateway.tone,
+                      )}
+                    >
                       {gateway.initial}
                     </span>
                     <div>
@@ -172,8 +205,8 @@ export function LiveStep() {
                     Connect your Airbnb calendar <Tag>Recommended</Tag>
                   </h3>
                   <p className="mt-1 text-small text-body">
-                    Dates booked on Airbnb get blocked here automatically, and direct bookings block your Airbnb calendar so you never
-                    get double bookings.
+                    Dates booked on Airbnb get blocked here automatically, and direct bookings block your Airbnb
+                    calendar so you never get double bookings.
                   </p>
                   <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-3 text-caption text-body">
@@ -193,7 +226,9 @@ export function LiveStep() {
                 <Button
                   variant="outline"
                   onClick={() =>
-                    setDemoMessage("Calendar sync needs the StayOwned backend, which isn't part of this static demo. Nothing was synced.")
+                    setDemoMessage(
+                      "Calendar sync needs the StayOwned backend, which isn't part of this static demo. Nothing was synced.",
+                    )
                   }
                 >
                   <Icon name="calendar" size={16} /> Sync Calendar
@@ -201,7 +236,10 @@ export function LiveStep() {
               </div>
             </li>
 
-            <li className="list-none rounded-card border border-primary-subtle bg-warning-soft p-5 sm:p-6" aria-label="Custom domain">
+            <li
+              className="list-none rounded-card border border-primary-subtle bg-warning-soft p-5 sm:p-6"
+              aria-label="Custom domain"
+            >
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                 <div className="flex-1">
                   <h3 className="flex items-center gap-2 font-heading text-title">
@@ -209,8 +247,8 @@ export function LiveStep() {
                   </h3>
                   <p className="mt-1 text-small text-body-strong">
                     Upgrade <code className="rounded-sm bg-surface px-1.5 py-0.5 text-caption">{link}</code> into{" "}
-                    <strong className="text-heading">www.{property.slug.replace(/-/g, "")}.com</strong> with free SSL and unlock all 4 premium
-                    designer themes (Luxe, Homestay, Urban, Coastal).
+                    <strong className="text-heading">www.{slug.replace(/-/g, "")}.com</strong> with free SSL
+                    and unlock all 4 premium designer themes (Luxe, Homestay, Urban, Coastal).
                   </p>
                 </div>
                 <Button href="/pricing" variant="outline" className="border-primary-subtle">
@@ -227,7 +265,10 @@ export function LiveStep() {
               {[
                 ["Click Connect", "and sign in to your Razorpay account (or create one in 2 minutes)."],
                 ["Guests pay directly", "on your branded StayOwned website via UPI or card."],
-                ["Direct deposit", ": Payments settle straight into your verified bank account with 0% StayOwned commission."],
+                [
+                  "Direct deposit",
+                  ": Payments settle straight into your verified bank account with 0% StayOwned commission.",
+                ],
               ].map(([strong, rest], index) => (
                 <li key={strong} className="flex gap-3 text-small text-body">
                   <span className="grid size-6 shrink-0 place-items-center rounded-pill bg-primary-soft text-caption font-bold text-primary-strong">
@@ -274,6 +315,36 @@ function SideCard({ title, children }: { title: string; children: ReactNode }) {
     <section className="rounded-card border border-border bg-card p-5 shadow-card sm:p-6">
       <h2 className="mb-4 font-body text-caption font-bold uppercase tracking-wider text-muted">{title}</h2>
       {children}
+    </section>
+  );
+}
+
+/** Hero for a company without a property (added in the back office): no page or link to share yet. */
+function NoPropertyHero({ companyName, loginUrl }: { companyName: string; loginUrl?: string }) {
+  return (
+    <section
+      aria-labelledby="live-title"
+      className="panel-gradient overflow-hidden rounded-panel p-6 text-on-dark shadow-panel sm:p-10 lg:p-14"
+    >
+      <p className="inline-flex items-center gap-2 rounded-pill border border-white/20 bg-white/5 px-3 py-1 text-caption font-bold uppercase tracking-wide text-on-dark-muted">
+        <span className="size-2 rounded-pill bg-primary" aria-hidden="true" />
+        No property yet
+      </p>
+      <h1 id="live-title" className="mt-5 text-hero text-on-dark">
+        Welcome, {companyName}.
+      </h1>
+      <p className="mt-4 max-w-2xl text-lead text-on-dark-muted">
+        Your account is ready. Add your first property in your dashboard — with its photos and price — to get your
+        booking page and a direct link to share with guests.
+      </p>
+      {loginUrl ? (
+        <div className="mt-7">
+          <Button href={loginUrl} size="lg" external>
+            <Icon name="plus" size={18} /> Add a property in the dashboard
+            <span className="sr-only"> (opens in a new tab)</span>
+          </Button>
+        </div>
+      ) : null}
     </section>
   );
 }

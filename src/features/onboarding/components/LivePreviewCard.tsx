@@ -39,7 +39,7 @@ export function LivePreviewCard({ property, variant }: { property: Property; var
         </div>
       ) : null}
 
-      <div className="relative aspect-hero w-full">
+      <div className={cn("relative aspect-hero w-full", !cover && "bg-secondary-active")}>
         {cover ? (
           <SafeImage src={cover.src} alt={cover.alt} fill sizes="(min-width: 1024px) 400px, 90vw" className="object-cover" />
         ) : null}
@@ -64,7 +64,8 @@ export function LivePreviewCard({ property, variant }: { property: Property; var
           </p>
           {variant !== "phone" ? (
             <p className="text-caption text-on-dark-muted">
-              {property.summary} · {place}
+              {property.summary}
+              {place ? ` · ${place}` : ""}
             </p>
           ) : null}
         </div>
@@ -169,10 +170,10 @@ function ContentBody({ property, place }: { property: Property; place: string })
   return (
     <>
       <div>
-        <p className="font-heading text-title text-heading">{property.headline}</p>
+        {property.headline ? <p className="font-heading text-title text-heading">{property.headline}</p> : null}
         <p className="mt-0.5 text-caption text-muted">{place}</p>
       </div>
-      <p className="line-clamp-3 text-caption text-body">{property.description}</p>
+      {property.description ? <p className="line-clamp-3 text-caption text-body">{property.description}</p> : null}
       <div className="flex flex-wrap gap-1.5">
         {property.highlights.map((item) => (
           <Pill key={item} highlight>
@@ -196,10 +197,12 @@ function PhoneBody({ property, place }: { property: Property; place: string }) {
   const chips = property.amenities.slice(0, 3).map(getAmenity);
   return (
     <>
-      <p className="font-heading text-base font-bold leading-snug text-heading">{property.headline}</p>
+      {property.headline ? (
+        <p className="font-heading text-base font-bold leading-snug text-heading">{property.headline}</p>
+      ) : null}
       <p className="flex items-start gap-1.5 text-caption text-body">
         <Icon name="mapPin" size={13} className="mt-0.5 shrink-0" />
-        {place} · {pluralize(property.maxGuests, "Guest")} · {pluralize(property.bedrooms, "Bed")}
+        {[place, pluralize(property.maxGuests, "Guest"), pluralize(property.bedrooms, "Bed")].filter(Boolean).join(" · ")}
       </p>
       <div className="flex flex-wrap gap-1.5 border-t border-divider pt-3">
         {chips.map((amenity) => (

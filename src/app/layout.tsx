@@ -4,6 +4,7 @@ import { siteConfig } from "@/config/site";
 import { fontBody, fontHeading } from "@/lib/fonts";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { ResumeBanner } from "@/components/layout/ResumeBanner";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url ?? siteConfig.fallbackUrl),
@@ -39,6 +40,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           Skip to main content
         </a>
         <Header />
+        <ResumeBanner />
         <main id="main" className="flex flex-1 flex-col">
           {children}
         </main>

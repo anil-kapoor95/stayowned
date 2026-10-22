@@ -17,7 +17,8 @@ export interface DraftProperty {
   bathrooms: number;
   maxGuests: number;
   amenities: AmenityId[];
-  currency: CurrencyCode;
+  /** ISO 4217 code of the account (from the API); CurrencyCode for the sample draft. */
+  currency: CurrencyCode | (string & {});
   price: number | null;
   slug: string;
   /** True once the host edits the link manually (stops auto-slugging from the name). */

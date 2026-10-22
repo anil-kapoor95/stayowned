@@ -48,7 +48,8 @@ export interface PropertyLocation {
 
 export interface Price {
   amount: number;
-  currency: CurrencyCode;
+  /** ISO 4217 code: the sample data uses CurrencyCode; sign-ups use the account currency. */
+  currency: CurrencyCode | (string & {});
   unit: "night";
 }
 

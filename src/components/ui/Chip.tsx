@@ -48,15 +48,17 @@ export function RadioChips<T extends string>({
   options,
   value,
   onChange,
+  disabled,
 }: {
   name: string;
   legend: string;
   options: readonly { value: T; label: string }[];
   value: T;
   onChange: (value: T) => void;
+  disabled?: boolean;
 }) {
   return (
-    <fieldset>
+    <fieldset disabled={disabled} className="disabled:opacity-60">
       <legend className="mb-2 text-small font-semibold text-heading">{legend}</legend>
       <div className="flex flex-wrap gap-2">
         {options.map((option) => {

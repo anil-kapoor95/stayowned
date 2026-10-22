@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import type { WizardStepId } from "../steps";
+import { stepNumber, type WizardStepId } from "../steps";
+import { SignupGate } from "./SignupGate";
 import { WizardStepper } from "./WizardStepper";
 
 /**
@@ -12,8 +13,11 @@ export function WizardShell({
   aside,
   children,
   wide = false,
+  editing = false,
 }: {
   step: WizardStepId;
+  /** Step 1 opened again after it was done (see SignupGate). */
+  editing?: boolean;
   aside?: ReactNode;
   children: ReactNode;
   wide?: boolean;
@@ -21,14 +25,25 @@ export function WizardShell({
   return (
     <div className="container-page py-8 sm:py-10">
       <WizardStepper current={step} />
-      <div
-        className={cn(
-          "mt-6 grid grid-cols-1 items-start gap-7 sm:mt-8",
-          !wide && Boolean(aside) && "lg:grid-cols-[minmax(0,1fr)_var(--container-aside)]",
-        )}
-      >
-        <div className="min-w-0">{children}</div>
-        {aside ? <aside aria-label="Live preview" className="min-w-0 space-y-5 lg:sticky lg:top-[calc(var(--spacing-header)+1.5rem)]">{aside}</aside> : null}
+      <div className="mt-6 sm:mt-8">
+        <SignupGate step={stepNumber(step)} editing={editing}>
+          <div
+            className={cn(
+              "grid grid-cols-1 items-start gap-7",
+              !wide && Boolean(aside) && "lg:grid-cols-[minmax(0,1fr)_var(--container-aside)]",
+            )}
+          >
+            <div className="min-w-0">{children}</div>
+            {aside ? (
+              <aside
+                aria-label="Live preview"
+                className="min-w-0 space-y-5 lg:sticky lg:top-[calc(var(--spacing-header)+1.5rem)]"
+              >
+                {aside}
+              </aside>
+            ) : null}
+          </div>
+        </SignupGate>
       </div>
     </div>
   );

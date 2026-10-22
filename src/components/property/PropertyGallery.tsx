@@ -33,10 +33,13 @@ export function PropertyGallery({ images, name }: { images: PropertyImage[]; nam
           "grid gap-2 overflow-hidden rounded-card",
           thumbs.length >= 3 && "md:grid-cols-4 md:grid-rows-2",
           thumbs.length > 0 && thumbs.length < 3 && "md:grid-cols-3 md:grid-rows-2",
+          // One thumbnail spans both rows, so nothing else gives the grid a height.
+          thumbs.length === 1 && "md:aspect-hero",
         )}
       >
         <GalleryButton
-          className={cn("aspect-photo md:aspect-auto", thumbs.length ? "md:col-span-2 md:row-span-2" : "")}
+          // One photo: keep a wide banner shape (without thumbnails the grid gives it no height).
+          className={cn("aspect-photo", thumbs.length ? "md:col-span-2 md:row-span-2 md:aspect-auto" : "md:aspect-hero")}
           onClick={() => open(0)}
           label={`Open photo 1 of ${total}: ${cover.alt}`}
         >

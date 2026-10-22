@@ -46,15 +46,23 @@ export function PropertyDetails({ property, breadcrumbs }: { property: Property;
       <div className="mt-10 grid grid-cols-1 items-start gap-10 lg:grid-cols-[minmax(0,1fr)_24rem]">
         <div className="grid gap-10">
           <section aria-labelledby="about-title">
-            <h2 id="about-title" className="text-section">
-              {property.headline}
+            <h2 id="about-title" className={property.headline ? "text-section" : "sr-only"}>
+              {property.headline || `About ${property.name}`}
             </h2>
             <ul className="mt-4 flex flex-wrap gap-2 text-small text-heading">
               <Stat icon="bed">{pluralize(property.bedrooms, "bedroom")}</Stat>
               <Stat icon="bath">{pluralize(property.bathrooms, "bathroom")}</Stat>
               <Stat icon="users">Up to {pluralize(property.maxGuests, "guest")}</Stat>
             </ul>
-            <p className="mt-5 max-w-prose text-lead text-body">{property.description}</p>
+            {property.description ? (
+              <div className="mt-5 grid max-w-prose gap-4 text-lead text-body">
+                {property.description.split(/\n\s*\n/).map((paragraph, index) => (
+                  <p key={index} className="whitespace-pre-line">
+                    {paragraph}
+                  </p>
+                ))}
+              </div>
+            ) : null}
             {property.highlights.length ? (
               <ul className="mt-5 flex flex-wrap gap-2" aria-label="Highlights">
                 {property.highlights.map((item) => (
@@ -123,10 +131,15 @@ export function PropertyDetails({ property, breadcrumbs }: { property: Property;
           <h2 id="book-title" className="sr-only">
             Book {property.name}
           </h2>
-          <p className="text-heading">
-            <span className="font-heading text-section">{formatPrice(property.price.amount, property.price.currency)}</span>{" "}
-            <span className="text-small text-muted">/ night</span>
-          </p>
+          {property.price.amount > 0 ? (
+            <p className="text-heading">
+              <span className="font-heading text-section">{formatPrice(property.price.amount, property.price.currency)}</span>{" "}
+              <span className="text-small text-muted">/ night</span>
+            </p>
+          ) : (
+            // No rate set yet (Prices in the back office): never show "0".
+            <p className="font-heading text-title text-heading">Price on request</p>
+          )}
           <p className="mb-5 mt-1 text-small font-semibold text-success">Direct booking rate · 0% commission</p>
           <InquiryForm property={property} />
         </aside>

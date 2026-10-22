@@ -1,6 +1,5 @@
-import Link from "next/link";
-import { authNav, mainNav } from "@/config/site";
-import { Button } from "@/components/ui/Button";
+import { mainNav } from "@/config/site";
+import { AuthNav } from "./AuthNav";
 import { Logo } from "./Logo";
 import { MobileNav, NavLinks } from "./Navigation";
 
@@ -12,16 +11,8 @@ export function Header() {
         <nav aria-label="Main" className="hidden lg:block">
           <NavLinks items={mainNav} />
         </nav>
-        <div className="hidden items-center gap-5 lg:flex">
-          <Link
-            href={authNav.login.href}
-            className="rounded-sm text-menu font-semibold text-nav transition-colors hover:text-link-hover focus-visible:outline-none focus-visible:focus-ring"
-          >
-            {authNav.login.label}
-          </Link>
-          <Button href={authNav.cta.href} size="md">
-            {authNav.cta.label}
-          </Button>
+        <div className="hidden lg:block">
+          <AuthNav variant="desktop" />
         </div>
         <MobileNav items={mainNav} />
       </div>

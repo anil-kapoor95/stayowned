@@ -33,7 +33,7 @@ export function Footer() {
           <p>
             © <CopyrightYear /> {siteConfig.name}. All rights reserved.
           </p>
-          <p>Demo build · static data only</p>
+          <p>Example listings use sample data</p>
         </div>
       </div>
     </footer>

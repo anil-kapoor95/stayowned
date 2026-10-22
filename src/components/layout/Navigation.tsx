@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useState } from "react";
-import { authNav, type NavItem } from "@/config/site";
-import { Button } from "@/components/ui/Button";
+import type { NavItem } from "@/config/site";
+import { AuthNav } from "./AuthNav";
 import { Icon } from "@/components/ui/Icon";
 import { cn } from "@/lib/utils";
 
@@ -99,13 +99,8 @@ export function MobileNav({ items }: { items: NavItem[] }) {
               </Link>
             );
           })}
-          <div className="mt-4 grid gap-3 border-t border-divider pt-5">
-            <Button href={authNav.cta.href} size="lg" fullWidth>
-              {authNav.cta.label}
-            </Button>
-            <Button href={authNav.login.href} variant="outline" size="lg" fullWidth>
-              {authNav.login.label}
-            </Button>
+          <div className="mt-4 border-t border-divider pt-5">
+            <AuthNav variant="mobile" />
           </div>
         </nav>
       </div>

@@ -96,8 +96,12 @@ export function InquiryForm({ property }: { property: Property }) {
           </dd>
           <dt className="text-muted">Guests</dt>
           <dd className="text-heading">{submitted.guests}</dd>
-          <dt className="text-muted">Estimated total</dt>
-          <dd className="font-semibold text-heading">{formatPrice(property.price.amount * nights, property.price.currency)}</dd>
+          {property.price.amount > 0 ? (
+            <>
+              <dt className="text-muted">Estimated total</dt>
+              <dd className="font-semibold text-heading">{formatPrice(property.price.amount * nights, property.price.currency)}</dd>
+            </>
+          ) : null}
         </dl>
         <Button variant="outline" onClick={() => setSubmitted(null)}>
           Edit inquiry
@@ -174,7 +178,7 @@ export function InquiryForm({ property }: { property: Property }) {
         value={values.message}
         onChange={(event) => set("message")(event.target.value)}
       />
-      {nights > 0 ? (
+      {nights > 0 && property.price.amount > 0 ? (
         <p className="flex justify-between border-t border-divider pt-3 text-small text-body">
           <span>
             {formatPrice(property.price.amount, property.price.currency)} × {nights} night{nights === 1 ? "" : "s"}

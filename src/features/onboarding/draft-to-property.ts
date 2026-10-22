@@ -4,8 +4,6 @@ import type { Property } from "@/types/property";
 import { generateCopy } from "./copy-templates";
 import type { WizardDraft } from "./types";
 
-const fallbackImage = properties[0].images[0];
-
 /** Builds the guest-facing Property shape from the wizard draft (used by previews). */
 export function draftToProperty(draft: WizardDraft): Property {
   const { property } = draft;
@@ -14,7 +12,9 @@ export function draftToProperty(draft: WizardDraft): Property {
     .split(",")
     .map((part) => part.trim());
   const typeLabel = PROPERTY_TYPE_LABELS[property.type];
-  const sample = properties.find((item) => item.slug === property.slug);
+  // Ratings only exist for the sample listing shown before sign-up, never for a host's own property.
+  const isSample = draft.photos.some((photo) => photo.id.startsWith("sample-"));
+  const sample = isSample ? properties.find((item) => item.slug === property.slug) : undefined;
 
   return {
     id: "draft",
@@ -30,10 +30,8 @@ export function draftToProperty(draft: WizardDraft): Property {
     maxGuests: property.maxGuests,
     amenities: property.amenities,
     highlights: property.amenities.slice(0, 4).map((id) => getAmenity(id).label),
-    images:
-      draft.photos.length > 0
-        ? draft.photos.map((photo) => ({ src: photo.src, alt: photo.alt, width: 1600, height: 1067 }))
-        : [fallbackImage],
+    // No photo yet: no image (a sample photo would look like the host's own).
+    images: draft.photos.map((photo) => ({ src: photo.src, alt: photo.alt, width: 1600, height: 1067 })),
     price: { amount: property.price ?? 0, currency: property.currency, unit: "night" },
     // Ratings only exist for published demo listings; a new draft has none.
     rating: sample?.rating,
