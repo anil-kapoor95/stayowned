@@ -1,10 +1,12 @@
-import { redirect } from "next/navigation";
-import { ACCOUNT_HREF } from "@/features/onboarding/steps";
+import { HomePage } from "@/components/marketing/HomePage";
+import { pageMetadata } from "@/lib/seo";
 
-/**
- * No home page is designed yet, so the root URL sends visitors to the first
- * onboarding step (temporary 307). Replace this file when a home page exists.
- */
-export default function HomePage() {
-  redirect(ACCOUNT_HREF);
+const title = "StayOwned — your own direct booking website";
+const description =
+  "Get your own booking page in 5 minutes. Add your property, AI writes the rest, and guests book and pay you directly with 0% commission.";
+
+export const metadata = { ...pageMetadata({ title, description, path: "/" }), title: { absolute: title } };
+
+export default function Page() {
+  return <HomePage />;
 }
