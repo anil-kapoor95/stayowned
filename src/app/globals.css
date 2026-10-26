@@ -107,3 +107,12 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Bricolage Grotesque optical sizes used in the Pricing / Themes frames. */
+@utility opsz-14 {
+  font-variation-settings: "opsz" 14;
+}
+
+@utility opsz-96 {
+  font-variation-settings: "opsz" 96;
+}

@@ -7,6 +7,8 @@ import { Icon } from "./Icon";
 /**
  * Accessible modal built on the native <dialog> element (focus trapping,
  * Escape to close and inert background come from the platform).
+ * Optional: an `icon` beside the title, a `footer` bar (e.g. Close / Save) and
+ * hiding the × button when the footer already has a Close action.
  */
 export function Dialog({
   open,
@@ -17,6 +19,10 @@ export function Dialog({
   className,
   size = "md",
   onKeyDown,
+  icon,
+  footer,
+  showCloseButton = true,
+  titleClassName = "text-title font-heading",
 }: {
   onKeyDown?: KeyboardEventHandler<HTMLDialogElement>;
   open: boolean;
@@ -25,7 +31,11 @@ export function Dialog({
   description?: ReactNode;
   children: ReactNode;
   className?: string;
-  size?: "md" | "lg" | "xl";
+  size?: "md" | "form" | "lg" | "xl";
+  icon?: ReactNode;
+  footer?: ReactNode;
+  showCloseButton?: boolean;
+  titleClassName?: string;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
@@ -41,7 +51,7 @@ export function Dialog({
     };
   }, [open]);
 
-  const widths = { md: "max-w-lg", lg: "max-w-3xl", xl: "max-w-5xl" } as const;
+  const widths = { md: "max-w-lg", form: "max-w-[40rem]", lg: "max-w-3xl", xl: "max-w-5xl" } as const;
 
   return (
     <dialog
@@ -59,22 +69,32 @@ export function Dialog({
       )}
     >
       <div className="flex items-start justify-between gap-4 border-b border-divider px-5 py-4 sm:px-6">
-        <div>
-          <h2 id={titleId} className="text-title font-heading">
-            {title}
-          </h2>
-          {description ? <div className="mt-1 text-small text-body">{description}</div> : null}
+        <div className={icon ? "flex items-center gap-3.5" : undefined}>
+          {icon}
+          <div>
+            <h2 id={titleId} className={titleClassName}>
+              {title}
+            </h2>
+            {description ? <div className="mt-1 text-small text-body">{description}</div> : null}
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="grid size-9 shrink-0 place-items-center rounded-pill text-heading hover:bg-surface-muted focus-visible:outline-none focus-visible:focus-ring"
-          aria-label="Close dialog"
-        >
-          <Icon name="x" size={18} />
-        </button>
+        {showCloseButton ? (
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid size-9 shrink-0 place-items-center rounded-pill text-heading hover:bg-surface-muted focus-visible:outline-none focus-visible:focus-ring"
+            aria-label="Close dialog"
+          >
+            <Icon name="x" size={18} />
+          </button>
+        ) : null}
       </div>
       <div className="px-5 py-5 sm:px-6">{children}</div>
+      {footer ? (
+        <div className="flex flex-wrap items-center justify-end gap-3 border-t border-divider bg-background px-5 py-4 sm:px-6">
+          {footer}
+        </div>
+      ) : null}
     </dialog>
   );
 }

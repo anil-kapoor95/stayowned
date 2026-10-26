@@ -14,13 +14,27 @@ import { useDraft } from "../draft-store";
 import { useSignupSession } from "../signup-session";
 import { PREVIEW_HREF } from "../steps";
 import { LivePreviewCard } from "../components/LivePreviewCard";
+import { PaymentGatewayDialog } from "../components/PaymentGatewayDialog";
+import {
+  GATEWAY_CONFIGS,
+  emptyGatewaySettings,
+  type GatewayId,
+  type GatewaySettings,
+} from "../payment-gateways";
 
-const GATEWAYS = [
-  { name: "Stripe", initial: "S", tone: "bg-brand-stripe", text: "International cards, Apple Pay & 135+ currencies" },
+const GATEWAYS: readonly {
+  name: string;
+  initial: string;
+  tone: string;
+  text: string;
+  /** Gateways with a connection popup. */
+  connect?: GatewayId;
+}[] = [
+  { connect: "stripe", name: "Stripe", initial: "S", tone: "bg-brand-stripe", text: "International cards, Apple Pay & 135+ currencies" },
   { name: "PayPal", initial: "P", tone: "bg-brand-paypal", text: "Trusted by global travelers worldwide" },
   { name: "Cashfree", initial: "C", tone: "bg-brand-cashfree", text: "UPI, cards, and instant settlement" },
   { name: "PayU", initial: "U", tone: "bg-brand-payu", text: "UPI, cards, EMI & PayLater options" },
-] as const;
+];
 
 export function LiveStep() {
   const draft = useDraft();
@@ -33,6 +47,25 @@ export function LiveStep() {
   const link = `${bookingLinkHost}/${slug}`;
   const [copied, setCopied] = useState(false);
   const [demoMessage, setDemoMessage] = useState<string | null>(null);
+  const [openGateway, setOpenGateway] = useState<GatewayId | null>(null);
+  // Kept in memory only for this visit; never stored or sent anywhere.
+  const [gatewaySettings, setGatewaySettings] = useState<Record<GatewayId, GatewaySettings>>(() => ({
+    razorpay: emptyGatewaySettings(GATEWAY_CONFIGS.razorpay),
+    stripe: emptyGatewaySettings(GATEWAY_CONFIGS.stripe),
+  }));
+  const [savedGateways, setSavedGateways] = useState<GatewayId[]>([]);
+
+  function saveGateway(id: GatewayId, settings: GatewaySettings) {
+    const name = GATEWAY_CONFIGS[id].name;
+    setGatewaySettings((current) => ({ ...current, [id]: settings }));
+    setSavedGateways((current) => (current.includes(id) ? current : [...current, id]));
+    setOpenGateway(null);
+    setDemoMessage(
+      settings.enabled
+        ? `Your ${name} details look right${settings.testMode ? " (test mode)" : ""}. Connecting needs the StayOwned backend, which isn't part of this static demo, so nothing was sent to ${name}.`
+        : `${name} payments are switched off. Nothing was sent to ${name}.`,
+    );
+  }
 
   async function copyLink() {
     try {
@@ -129,6 +162,17 @@ export function LiveStep() {
         </Notice>
       ) : null}
 
+      {(Object.keys(GATEWAY_CONFIGS) as GatewayId[]).map((id) => (
+        <PaymentGatewayDialog
+          key={id}
+          config={GATEWAY_CONFIGS[id]}
+          open={openGateway === id}
+          initial={gatewaySettings[id]}
+          onClose={() => setOpenGateway(null)}
+          onSave={(settings) => saveGateway(id, settings)}
+        />
+      ))}
+
       <div className="mt-10 grid grid-cols-1 items-start gap-7 lg:grid-cols-[minmax(0,1fr)_21rem]">
         <section aria-labelledby="checklist-title">
           <p className="text-eyebrow uppercase text-primary">Checklist to launch</p>
@@ -149,15 +193,9 @@ export function LiveStep() {
                     banking.
                   </p>
                 </div>
-                <Button
-                  size="lg"
-                  onClick={() =>
-                    setDemoMessage(
-                      "Connecting a payment gateway needs the StayOwned backend, which isn't part of this static demo. Nothing was connected.",
-                    )
-                  }
-                >
-                  Connect Razorpay <Icon name="arrowRight" size={16} />
+                <Button size="lg" aria-haspopup="dialog" onClick={() => setOpenGateway("razorpay")}>
+                  {savedGateways.includes("razorpay") ? "Edit Razorpay" : "Connect Razorpay"}{" "}
+                  <Icon name="arrowRight" size={16} />
                 </Button>
               </div>
             </li>
@@ -176,24 +214,44 @@ export function LiveStep() {
                 </Link>
               </div>
               <ul className="mt-5 grid gap-3 sm:grid-cols-2">
-                {GATEWAYS.map((gateway) => (
-                  <li key={gateway.name} className="flex gap-3 rounded-input border border-border bg-background p-4">
-                    <span
-                      className={cn(
-                        "grid size-9 shrink-0 place-items-center rounded-sm font-bold text-white",
-                        gateway.tone,
+                {GATEWAYS.map((gateway) => {
+                  const content = (
+                    <>
+                      <span
+                        className={cn(
+                          "grid size-9 shrink-0 place-items-center rounded-sm font-bold text-white",
+                          gateway.tone,
+                        )}
+                      >
+                        {gateway.initial}
+                      </span>
+                      <div>
+                        <p className="flex items-center gap-2 font-semibold text-heading">
+                          {gateway.name} <Badge variant="pro">Pro</Badge>
+                        </p>
+                        <p className="mt-0.5 text-caption text-body">{gateway.text}</p>
+                      </div>
+                    </>
+                  );
+                  const connect = gateway.connect;
+                  return (
+                    <li key={gateway.name}>
+                      {connect ? (
+                        <button
+                          type="button"
+                          aria-haspopup="dialog"
+                          onClick={() => setOpenGateway(connect)}
+                          className="flex h-full w-full gap-3 rounded-input border border-border bg-background p-4 text-left transition-colors hover:border-border-strong focus-visible:outline-none focus-visible:focus-ring"
+                        >
+                          {content}
+                          <span className="sr-only">: open {gateway.name} connection settings</span>
+                        </button>
+                      ) : (
+                        <div className="flex h-full gap-3 rounded-input border border-border bg-background p-4">{content}</div>
                       )}
-                    >
-                      {gateway.initial}
-                    </span>
-                    <div>
-                      <p className="flex items-center gap-2 font-semibold text-heading">
-                        {gateway.name} <Badge variant="pro">Pro</Badge>
-                      </p>
-                      <p className="mt-0.5 text-caption text-body">{gateway.text}</p>
-                    </div>
-                  </li>
-                ))}
+                    </li>
+                  );
+                })}
               </ul>
             </li>
 

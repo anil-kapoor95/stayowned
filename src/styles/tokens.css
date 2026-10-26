@@ -27,6 +27,11 @@
   --font-body: var(--font-dm-sans), "DM Sans", ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-body);
   --font-serif: Georgia, "Times New Roman", ui-serif, serif;
+  /* Pricing / Themes frames: Bricolage Grotesque display headings. */
+  --font-display: var(--font-bricolage), "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+  /* Theme-card mock-ups in the Themes frame are set in Arial / Times (Figma: Liberation Sans / Serif). */
+  --font-mock-sans: Arial, Helvetica, "Liberation Sans", sans-serif;
+  --font-mock-serif: "Times New Roman", Times, "Liberation Serif", serif;
 
   /* --------------------------------------------------------------- Brand
    * Rebranding: change the primary scale together (primary, -hover, -active,
@@ -137,6 +142,83 @@
   --color-theme-cta: #ffd5c8;
   --color-theme-cta-text: #af3b0b;
   --color-theme-title: #1e293b;
+
+  /* ------------------------------ Marketing pages (Pricing / Themes frames) */
+  --color-hero-wash: #fef4ee; /* hero background */
+  --color-hero-glow: #f4f5ff; /* blurred circle, right of the hero */
+  --color-chip-border-warm: #eae6e1; /* hero pills */
+  --color-ink-strong: #1f223a; /* section titles */
+  --color-slate: #68708c; /* hero / stats copy */
+  --color-plan-text: #384065; /* plan feature lines */
+  --color-plan-text-on-dark: #d8dcf5; /* Business plan feature lines */
+  --color-plan-tick-on-dark: #ffb394;
+  --color-section-warm: #fffaf7; /* "Every plan includes" band */
+  --color-stat: #ff552d; /* stat numbers */
+  --color-stat-border: #d0cac7;
+  --color-stat-divider: #e7e3e1;
+  --color-includes-bg: #fff7f3; /* "Every theme includes" card */
+  --color-theme-card-border: #e9e9e9;
+  --color-pro-ink: #1b2250; /* Pro badge / Upgrade button */
+  --color-cta-panel: #111b4f; /* "Ready to launch" card */
+  --color-cta-circle: #1c2355;
+  --color-banner-from: #1b2250; /* "Unlock all 4 Pro themes" banner */
+  --color-banner-to: #2b3568;
+  --color-gold: #fcd34d; /* lock icons on navy */
+
+  /* Display sizes used only by the Pricing / Themes frames */
+  --text-hero-xl: clamp(2.5rem, 1.6rem + 3.6vw, 3.625rem); /* 58px */
+  --text-hero-xl--line-height: 1;
+  --text-hero-xl--letter-spacing: -0.025em;
+  --text-hero-xl--font-weight: 800;
+  --text-section-xl: clamp(2.125rem, 1.4rem + 2.8vw, 3.125rem); /* 50px */
+  --text-section-xl--line-height: 1.08;
+  --text-section-xl--letter-spacing: -0.04em;
+  --text-section-xl--font-weight: 700;
+  --text-price: clamp(2.5rem, 2rem + 1.6vw, 3.25rem); /* 52px */
+  --text-price--line-height: 1;
+  --text-price--letter-spacing: -0.04em;
+  --text-price--font-weight: 800;
+
+  --radius-plan: 2rem; /* 32px pricing cards */
+  --radius-feature-band: 2.25rem; /* 36px "Every theme includes" */
+  --shadow-plan-popular: 0 40px 70px -35px rgb(232 83 29 / 0.5);
+  --shadow-theme-card: 0 15px 15px rgb(0 0 0 / 0.06);
+  --shadow-theme-card-active: 0 15px 15px rgb(232 83 29 / 0.1);
+  --shadow-plan-cta: 0 12px 28px -10px rgb(232 83 29 / 0.7); /* "Go Pro" button */
+  --shadow-chip: 0 1px 2px rgb(0 0 0 / 0.05); /* hero eyebrow pill */
+  --shadow-mock-hero: inset 0 2px 4px rgb(0 0 0 / 0.05);
+  --shadow-pro-banner: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --drop-shadow-hairline: 0 1px 1px rgb(0 0 0 / 0.05); /* trust pills, Upgrade buttons */
+  --drop-shadow-popular-badge: 0 4px 6px rgb(232 83 29 / 0.4);
+  --drop-shadow-plan-button: 0 4px 7px rgb(27 33 80 / 0.04);
+  --radius-theme-card: 1rem; /* 16px Themes gallery cards */
+
+  /* Themes gallery (Figma 131:197) — card chrome, badges, Pro banner */
+  --color-gallery-intro: #67708a; /* "Start with a free theme…" */
+  --color-gallery-ink: #0f172a; /* theme names */
+  --color-gallery-muted: #64748b; /* theme taglines */
+  --color-free-badge-bg: #e4f8ec;
+  --color-free-badge-text: #0e8a42;
+  --color-preview-button: #f1f3f5;
+  --color-preview-button-text: #334155;
+  --color-pro-overlay: rgb(21 25 59 / 0.9); /* PRO badge on mock heroes */
+  --color-banner-border: rgb(226 232 240 / 0.2);
+  --color-banner-text: #cbd5e1;
+  --color-banner-icon-bg: rgb(249 115 22 / 0.2);
+  --color-banner-icon-border: rgb(251 146 60 / 0.3);
+
+  /* Theme-card mock windows, exactly as drawn in Figma. Casa is the default; the
+   * other looks are set by [data-mock] below. They differ on purpose from the
+   * [data-theme] page palettes, which were darkened for text contrast. */
+  --color-mock-window: #fafafa;
+  --color-mock-window-border: rgb(226 232 240 / 0.8);
+  --color-mock-brand: #1e293b;
+  --color-mock-pill: #ffd5c8;
+  --color-mock-pill-text: #ee4d1b;
+  --color-mock-hero: #ee4d1b;
+  --color-mock-title: #ffffff;
+  --color-mock-sub: rgb(255 255 255 / 0.8);
+  --color-mock-thumb: #eaeaea;
 
   /* ----------------------------------------------------- Type scale (rem) */
   --text-micro: 0.625rem;
@@ -325,4 +407,47 @@
   --color-body: #44605e;
   --color-border: #c9dfdc;
   --font-heading: var(--font-serif);
+}
+
+/* Themes gallery mock windows (Figma 131:197). Apply with <div data-mock="luxe">. */
+[data-mock="luxe"] {
+  --color-mock-window: #141517;
+  --color-mock-window-border: #292524;
+  --color-mock-brand: #e7e5e4;
+  --color-mock-pill: #c8a97e;
+  --color-mock-pill-text: #1c1917;
+  --color-mock-hero: #423c34;
+  --color-mock-title: #f5f5f4;
+  --color-mock-sub: #d6d3d1;
+  --color-mock-thumb: #2b2b2b;
+}
+[data-mock="homestay"] {
+  --color-mock-window: #faf5ee;
+  --color-mock-window-border: #e9dfcf;
+  --color-mock-brand: #523a1e;
+  --color-mock-pill: #b76735;
+  --color-mock-pill-text: #ffffff;
+  --color-mock-hero: #9e734e;
+  --color-mock-sub: #fef3c7;
+  --color-mock-thumb: #eadbce;
+}
+[data-mock="urban"] {
+  --color-mock-window: #f3f4f6;
+  --color-mock-window-border: #e2e8f0;
+  --color-mock-brand: #0f172a;
+  --color-mock-pill: #2b4c7e;
+  --color-mock-pill-text: #ffffff;
+  --color-mock-hero: #687c94;
+  --color-mock-sub: #e2e8f0;
+  --color-mock-thumb: #d6dbe1;
+}
+[data-mock="coastal"] {
+  --color-mock-window: #ebf4f3;
+  --color-mock-window-border: #cce4e1;
+  --color-mock-brand: #204e4a;
+  --color-mock-pill: #1d5451;
+  --color-mock-pill-text: #ffffff;
+  --color-mock-hero: #4e8380;
+  --color-mock-sub: #ccfbf1;
+  --color-mock-thumb: #c9dfdc;
 }

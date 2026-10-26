@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { siteConfig } from "@/config/site";
-import { fontBody, fontHeading } from "@/lib/fonts";
+import { fontBody, fontDisplay, fontHeading } from "@/lib/fonts";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { ResumeBanner } from "@/components/layout/ResumeBanner";
@@ -31,7 +31,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${fontHeading.variable} ${fontBody.variable}`}>
+    <html lang="en" className={`${fontHeading.variable} ${fontBody.variable} ${fontDisplay.variable}`}>
       <body className="flex min-h-dvh flex-col">
         <a
           href="#main"

@@ -195,3 +195,80 @@ export const CONTACT_FAQS: FaqItem[] = [
       "Yes. Send us your Airbnb link on WhatsApp and our onboarding team will help you move your details, photos and calendar — free.",
   },
 ];
+
+/*
+ * Pricing and Themes pages. The questions and the first (open) answer of each list are
+ * taken from the Figma "pricing page" and "Themes page" frames. The design shows the other
+ * questions collapsed, so their answers are NOT in Figma: they were written from the plan
+ * features shown in the designs and must be confirmed before launch (marked "Draft").
+ */
+export const PRICING_FAQS: FaqItem[] = [
+  {
+    id: "hidden-fees",
+    question: "Are there any hidden fees or commissions on my bookings?",
+    answer:
+      "No. We charge 0% commission on all your bookings. You keep 100% of your rental revenue and only pay the flat subscription fee for your chosen plan.",
+  },
+  {
+    id: "try-first",
+    question: "Can I try it out before committing to a paid plan?",
+    // Draft — not in Figma.
+    answer: "Yes. The Starter plan is free to use, and Pro comes with a 14-day trial so you can test every feature first.",
+  },
+  {
+    id: "change-plan",
+    question: "What happens if I want to upgrade or downgrade my plan?",
+    // Draft — not in Figma.
+    answer:
+      "You can change your plan at any time. Your page, photos and texts stay as they are; only the features of the new plan change.",
+  },
+  {
+    id: "guest-fees",
+    question: "Do my guests pay extra processing fees?",
+    // Draft — not in Figma.
+    answer:
+      "StayOwned adds no fee for your guests. Payments run through your own gateway (Razorpay on Starter), whose standard charges apply to your account.",
+  },
+  {
+    id: "cancel",
+    question: "Can I cancel my subscription at any time?",
+    // Draft — not in Figma.
+    answer: "Yes. You can cancel at any time and move back to the free Starter plan.",
+  },
+];
+
+export const THEMES_FAQS: FaqItem[] = [
+  {
+    id: "themes-in-plan",
+    question: "Are all themes included in my plan?",
+    answer:
+      "You get full access to our Default Free Theme forever. To unlock our premium, high-converting themes, you can upgrade to any paid plan at any time.",
+  },
+  {
+    id: "switch-themes",
+    question: "Can I switch between themes without losing my content?",
+    // Draft — not in Figma.
+    answer:
+      "Yes. Your texts, photos and prices stay the same when you change theme, and you can switch any time.",
+  },
+  {
+    id: "free-vs-premium",
+    question: "What is the difference between the Free Theme and Premium Themes?",
+    // Draft — not in Figma.
+    answer:
+      "Casa is free and works for any stay. Pro unlocks four designer looks — Luxe, Homestay, Urban and Coastal — with their own palettes, fonts and booking styling.",
+  },
+  {
+    id: "customise",
+    question: "Can I customize the colors and fonts of the themes?",
+    // Draft — not in Figma.
+    answer:
+      "Each theme comes with its own colour palettes and fonts. Pick the palette that suits your property when you choose your theme.",
+  },
+  {
+    id: "coding-themes",
+    question: "Do I need coding skills to use these themes?",
+    // Draft — not in Figma.
+    answer: "No. Choose a theme and your page is built for you. There is nothing to design or code.",
+  },
+];

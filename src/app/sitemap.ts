@@ -13,6 +13,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     { url: `${base}/properties`, changeFrequency: "daily", priority: 0.9 },
     { url: `${base}/themes`, changeFrequency: "monthly", priority: 0.5 },
+    { url: `${base}/pricing`, changeFrequency: "monthly", priority: 0.5 },
     { url: `${base}/contact`, changeFrequency: "yearly", priority: 0.3 },
     ...slugs.map((slug) => ({
       url: `${base}/properties/${slug}`,

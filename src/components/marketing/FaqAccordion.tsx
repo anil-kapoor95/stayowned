@@ -10,12 +10,21 @@ import type { FaqItem } from "./faq-data";
  * Questions as separate cards (home, how it works, contact). One answer is open at a time;
  * the first one starts open, as in the Figma frames.
  */
-export function FaqAccordion({ items, showSupport = true }: { items: FaqItem[]; showSupport?: boolean }) {
+export function FaqAccordion({
+  items,
+  showSupport = true,
+  className = "max-w-3xl",
+}: {
+  items: FaqItem[];
+  showSupport?: boolean;
+  /** Width of the list; the Pricing and Themes frames use 900px. */
+  className?: string;
+}) {
   const [open, setOpen] = useState<string | null>(items[0]?.id ?? null);
   const baseId = useId();
 
   return (
-    <div className="mx-auto grid max-w-3xl gap-2.5">
+    <div className={cn("mx-auto grid gap-2.5", className)}>
       {items.map((item) => {
         const isOpen = open === item.id;
         const panelId = `${baseId}-${item.id}`;

@@ -72,10 +72,6 @@ export const placeholderPages = {
     title: "How it works",
     description: "A step-by-step look at creating and sharing your StayOwned booking page.",
   },
-  pricing: {
-    title: "Pricing",
-    description: "Free and Pro plans for direct booking websites.",
-  },
   faq: { title: "FAQ", description: "Answers to common questions from hosts." },
   login: { title: "Log in", description: "Sign in to manage your booking page." },
   about: { title: "About us", description: "The team behind StayOwned." },

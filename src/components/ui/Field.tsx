@@ -83,6 +83,8 @@ type TextFieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, "prefix"> & {
   labelAside?: ReactNode;
   srOnlyLabel?: boolean;
   wrapperClassName?: string;
+  /** 40px input with smaller text (dialogs). Default is the 52px control. */
+  compact?: boolean;
 };
 
 export function TextField({
@@ -98,6 +100,7 @@ export function TextField({
   wrapperClassName,
   className,
   required,
+  compact = false,
   ...rest
 }: TextFieldProps) {
   return (
@@ -122,7 +125,7 @@ export function TextField({
           aria-describedby={describedBy(id, hint, error)}
           className={cn(
             controlClasses,
-            "h-control",
+            compact ? "h-control-sm text-small" : "h-control",
             prefix ? prefixPadding : "pl-4",
             suffix ? "pr-20" : "pr-4",
             className,
