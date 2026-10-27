@@ -124,6 +124,30 @@ export interface ApiTheme {
   };
 }
 
+/** Saved online payment gateway of the host's property. Secret keys are never sent back, only whether one is saved. */
+export interface PaymentMethodState {
+  payment_method: "razorpay" | "stripe";
+  is_active: boolean;
+  is_test_mode: boolean;
+  label: string;
+  public_key: string;
+  test_public_key: string;
+  has_secret_key: boolean;
+  has_test_secret_key: boolean;
+  /** Online gateways switched on for the property (sent back by a save). */
+  active_gateways?: string[];
+}
+
+/** Fields of pjActionSavePaymentMethod. An empty secret_key keeps the saved one for that mode. */
+export interface PaymentMethodRequest {
+  payment_method: "razorpay" | "stripe";
+  is_active: 0 | 1;
+  is_test_mode: 0 | 1;
+  label: string;
+  public_key: string;
+  secret_key: string;
+}
+
 /* ------------------------------------------------------------ Endpoints */
 
 type Fields = Record<string, string | number | undefined>;
@@ -200,4 +224,15 @@ export const signupApi = {
   checkPassword: (password: string) => apiRequest<{ valid: boolean }>("pjActionCheckPassword", { password }),
 
   countries: () => apiRequest<{ countries: Country[] }>("pjActionGetCountries"),
+
+  /** Saved Razorpay / Stripe settings of the property, to fill in the payment popups. */
+  paymentMethods: (token: string) =>
+    apiRequest<{
+      payment_methods: Partial<Record<PaymentMethodState["payment_method"], PaymentMethodState>>;
+      active_gateways: string[];
+    }>("pjActionGetPaymentMethods", {}, { token }),
+
+  /** Saves one payment gateway of the property (402: the plan allows no more gateways). */
+  savePaymentMethod: (fields: PaymentMethodRequest, token: string) =>
+    apiRequest<PaymentMethodState>("pjActionSavePaymentMethod", { ...fields }, { token }),
 };

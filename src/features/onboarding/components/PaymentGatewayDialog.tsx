@@ -8,14 +8,18 @@ import { TextField } from "@/components/ui/Field";
 import { SwitchCard } from "@/components/ui/Switch";
 import { cn } from "@/lib/utils";
 import {
+  formFieldForServerError,
   validateGatewaySettings,
   type GatewayConfig,
   type GatewaySettings,
 } from "../payment-gateways";
 
+/** Result of saving: field errors use the API field names (public_key, secret_key, label). */
+export type GatewaySaveResult = { ok: true } | { ok: false; message: string; errors: Record<string, string> };
+
 /**
- * "Connect Razorpay" style popup, shared by every gateway. Front end only: Save checks
- * the fields and hands the values back; nothing is sent to the provider.
+ * "Connect Razorpay" style popup, shared by every gateway. Save checks the fields, then
+ * `onSave` sends them to the back office; server errors are shown on the form.
  */
 export function PaymentGatewayDialog({
   config,
@@ -28,9 +32,10 @@ export function PaymentGatewayDialog({
   open: boolean;
   initial: GatewaySettings;
   onClose: () => void;
-  onSave: (settings: GatewaySettings) => void;
+  onSave: (settings: GatewaySettings) => Promise<GatewaySaveResult>;
 }) {
   const formId = useId();
+  const [submitting, setSubmitting] = useState(false);
   return (
     <Dialog
       open={open}
@@ -53,17 +58,27 @@ export function PaymentGatewayDialog({
       }
       footer={
         <>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} disabled={submitting}>
             Close
           </Button>
-          <Button type="submit" form={formId}>
-            Save and connect
+          <Button type="submit" form={formId} disabled={submitting} aria-busy={submitting}>
+            {submitting ? "Saving…" : "Save and connect"}
           </Button>
         </>
       }
     >
       {/* Remounted on every open so Close discards unsaved changes. */}
-      {open ? <GatewayForm key={config.id} id={formId} config={config} initial={initial} onSave={onSave} /> : null}
+      {open ? (
+        <GatewayForm
+          key={config.id}
+          id={formId}
+          config={config}
+          initial={initial}
+          onSave={onSave}
+          submitting={submitting}
+          setSubmitting={setSubmitting}
+        />
+      ) : null}
     </Dialog>
   );
 }
@@ -73,14 +88,19 @@ function GatewayForm({
   config,
   initial,
   onSave,
+  submitting,
+  setSubmitting,
 }: {
   id: string;
   config: GatewayConfig;
   initial: GatewaySettings;
-  onSave: (settings: GatewaySettings) => void;
+  onSave: (settings: GatewaySettings) => Promise<GatewaySaveResult>;
+  submitting: boolean;
+  setSubmitting: (submitting: boolean) => void;
 }) {
   const [settings, setSettings] = useState<GatewaySettings>(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [formError, setFormError] = useState<string | null>(null);
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const formRef = useRef<HTMLFormElement>(null);
   const mode = settings.testMode ? "test" : "live";
@@ -101,20 +121,36 @@ function GatewayForm({
     }
   }
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  function focusFirstError(found: Record<string, string>) {
+    const first = ["label", ...config.keys.map((key) => key.id)].find((key) => found[key]);
+    if (first) formRef.current?.querySelector<HTMLInputElement>(`#${CSS.escape(fieldId(first))}`)?.focus();
+    return Boolean(first);
+  }
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submitting) return;
+    setFormError(null);
     const found = validateGatewaySettings(config, settings);
     setErrors(found);
-    const first = config.keys.find((key) => found[key.id]);
-    if (first) {
-      formRef.current?.querySelector<HTMLInputElement>(`#${CSS.escape(fieldId(first.id))}`)?.focus();
-      return;
-    }
-    onSave({
+    if (focusFirstError(found)) return;
+
+    setSubmitting(true);
+    const result = await onSave({
       ...settings,
       label: settings.label.trim(),
       keys: Object.fromEntries(Object.entries(settings.keys).map(([key, value]) => [key, value.trim()])),
     });
+    setSubmitting(false);
+    if (result.ok) return;
+
+    const serverErrors: Record<string, string> = {};
+    for (const [field, text] of Object.entries(result.errors)) {
+      const formField = formFieldForServerError(config, field);
+      if (formField) serverErrors[formField] = text;
+    }
+    setErrors(serverErrors);
+    if (!focusFirstError(serverErrors)) setFormError(result.message);
   }
 
   return (
@@ -122,6 +158,12 @@ function GatewayForm({
       <Notice tone="warning" className="py-3">
         This payment method requires your website to be secured with an SSL certificate.
       </Notice>
+
+      {formError ? (
+        <Notice tone="error" role="alert" className="py-3">
+          {formError}
+        </Notice>
+      ) : null}
 
       <SwitchCard
         title={`Allow ${config.name} payments`}
@@ -133,76 +175,83 @@ function GatewayForm({
         }}
       />
 
-      <TextField
-        id={fieldId("label")}
-        compact
-        label={
-          <>
-            Label <span className="font-normal text-body">(optional)</span>
-          </>
-        }
-        hint="Shown to guests at checkout."
-        placeholder={config.labelPlaceholder}
-        value={settings.label}
-        maxLength={60}
-        onChange={(event) => update({ label: event.target.value })}
-      />
-
-      <SwitchCard
-        title="Test mode"
-        description="Try a payment without real money. Turn it off before you go live."
-        checked={settings.testMode}
-        onChange={(testMode) => {
-          update({ testMode });
-          setErrors({});
-        }}
-      />
-
-      {config.keys.map((key) => {
-        const shown = Boolean(revealed[key.id]);
-        return (
+      {/* The settings only apply while payments are allowed: hidden when switched off. */}
+      {settings.enabled ? (
+        <div className="grid gap-4">
           <TextField
-            key={key.id}
-            id={fieldId(key.id)}
+            id={fieldId("label")}
             compact
-            label={key.label}
-            hint={key.hint}
-            error={errors[key.id]}
-            placeholder={key.placeholder[mode]}
-            value={settings.keys[key.id] ?? ""}
-            onChange={(event) => setKey(key.id, event.target.value)}
-            type={key.secret && !shown ? "password" : "text"}
-            spellCheck={false}
-            autoCapitalize="off"
-            autoComplete="off"
-            data-1p-ignore
-            suffix={
-              key.secret ? (
-                <button
-                  type="button"
-                  onClick={() => setRevealed((current) => ({ ...current, [key.id]: !shown }))}
-                  aria-pressed={shown}
-                  aria-controls={fieldId(key.id)}
-                  className="rounded-sm px-2 py-1 text-caption font-bold text-heading hover:text-link-hover focus-visible:outline-none focus-visible:focus-ring"
-                >
-                  {shown ? "Hide" : "Show"}
-                  <span className="sr-only"> {key.label}</span>
-                </button>
-              ) : undefined
+            label={
+              <>
+                Label <span className="font-normal text-body">(optional)</span>
+              </>
             }
+            hint="Shown to guests at checkout."
+            error={errors.label}
+            placeholder={config.labelPlaceholder}
+            value={settings.label}
+            maxLength={60}
+            onChange={(event) => update({ label: event.target.value })}
           />
-        );
-      })}
 
-      {config.extraToggles.map((toggle) => (
-        <SwitchCard
-          key={toggle.id}
-          title={toggle.title}
-          description={toggle.description}
-          checked={Boolean(settings.toggles[toggle.id])}
-          onChange={(value) => update({ toggles: { ...settings.toggles, [toggle.id]: value } })}
-        />
-      ))}
+          <SwitchCard
+            title="Test mode"
+            description="Try a payment without real money. Turn it off before you go live."
+            checked={settings.testMode}
+            onChange={(testMode) => {
+              update({ testMode });
+              setErrors({});
+            }}
+          />
+
+          {config.keys.map((key) => {
+            const shown = Boolean(revealed[key.id]);
+            const keepsSaved = key.secret && settings.savedSecret[mode];
+            return (
+              <TextField
+                key={key.id}
+                id={fieldId(key.id)}
+                compact
+                label={key.label}
+                hint={key.hint}
+                error={errors[key.id]}
+                placeholder={keepsSaved ? "Saved — leave empty to keep it" : key.placeholder[mode]}
+                value={settings.keys[key.id] ?? ""}
+                onChange={(event) => setKey(key.id, event.target.value)}
+                type={key.secret && !shown ? "password" : "text"}
+                spellCheck={false}
+                autoCapitalize="off"
+                autoComplete="off"
+                data-1p-ignore
+                suffix={
+                  key.secret ? (
+                    <button
+                      type="button"
+                      onClick={() => setRevealed((current) => ({ ...current, [key.id]: !shown }))}
+                      aria-pressed={shown}
+                      aria-controls={fieldId(key.id)}
+                      className="rounded-sm px-2 py-1 text-caption font-bold text-heading hover:text-link-hover focus-visible:outline-none focus-visible:focus-ring"
+                    >
+                      {shown ? "Hide" : "Show"}
+                      <span className="sr-only"> {key.label}</span>
+                    </button>
+                  ) : undefined
+                }
+              />
+            );
+          })}
+
+          {config.extraToggles.map((toggle) => (
+            <SwitchCard
+              key={toggle.id}
+              title={toggle.title}
+              description={toggle.description}
+              checked={Boolean(settings.toggles[toggle.id])}
+              onChange={(value) => update({ toggles: { ...settings.toggles, [toggle.id]: value } })}
+            />
+          ))}
+        </div>
+      ) : null}
     </form>
   );
 }

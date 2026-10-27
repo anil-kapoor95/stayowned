@@ -1,5 +1,9 @@
+import type { PaymentMethodRequest, PaymentMethodState } from "@/lib/api/signup";
+
 /**
- * Payment gateway connection forms (front end only — nothing is sent to the provider).
+ * Payment gateway connection forms. Saved to the back office with pjActionSavePaymentMethod
+ * (nothing is sent to Razorpay or Stripe from here), into the same fields as the back office's
+ * Properties > Payments. Secret keys are write-only: the server only reports whether one is saved.
  * Razorpay copy comes from the "Connect Razorpay" design; Stripe uses the same layout with
  * the fields of the existing Stripe settings form (public key, secret key, authorization).
  */
@@ -44,6 +48,8 @@ export interface GatewaySettings {
   testMode: boolean;
   keys: Record<string, string>;
   toggles: Record<string, boolean>;
+  /** A secret key is already saved on the server for live / test mode (empty field = keep it). */
+  savedSecret: { live: boolean; test: boolean };
 }
 
 export const GATEWAY_CONFIGS: Record<GatewayId, GatewayConfig> = {
@@ -114,7 +120,82 @@ export function emptyGatewaySettings(config: GatewayConfig): GatewaySettings {
     testMode: false,
     keys: Object.fromEntries(config.keys.map((key) => [key.id, ""])),
     toggles: Object.fromEntries(config.extraToggles.map((toggle) => [toggle.id, false])),
+    savedSecret: { live: false, test: false },
   };
+}
+
+function keyFields(config: GatewayConfig) {
+  const publicKey = config.keys.find((key) => !key.secret);
+  const secretKey = config.keys.find((key) => key.secret);
+  if (!publicKey || !secretKey) throw new Error(`${config.name}: a public and a secret key field are required`);
+  return { publicKey, secretKey };
+}
+
+/** Form values -> API fields. "Enable authorization" is not sent: the back office has no setting for it yet. */
+export function toPaymentMethodRequest(config: GatewayConfig, settings: GatewaySettings): PaymentMethodRequest {
+  const { publicKey, secretKey } = keyFields(config);
+  if (!settings.enabled) {
+    // Switched off: the settings are hidden, so only the switch is saved. Empty values
+    // leave the saved label and keys as they are (they are back when switched on again).
+    return {
+      payment_method: config.id,
+      is_active: 0,
+      is_test_mode: settings.testMode ? 1 : 0,
+      label: "",
+      public_key: "",
+      secret_key: "",
+    };
+  }
+  return {
+    payment_method: config.id,
+    is_active: 1,
+    is_test_mode: settings.testMode ? 1 : 0,
+    label: settings.label.trim(),
+    public_key: (settings.keys[publicKey.id] ?? "").trim(),
+    secret_key: (settings.keys[secretKey.id] ?? "").trim(),
+  };
+}
+
+/** Saved state from the API -> form values. The secret field is left empty (it is never sent back). */
+export function fromPaymentMethodState(
+  config: GatewayConfig,
+  current: GatewaySettings,
+  state: PaymentMethodState,
+): GatewaySettings {
+  const { publicKey, secretKey } = keyFields(config);
+  return {
+    ...current,
+    enabled: state.is_active,
+    testMode: state.is_test_mode,
+    label: state.label,
+    keys: {
+      ...current.keys,
+      [publicKey.id]: state.is_test_mode ? state.test_public_key : state.public_key,
+      [secretKey.id]: "",
+    },
+    savedSecret: { live: state.has_secret_key, test: state.has_test_secret_key },
+  };
+}
+
+/** True when anything was saved for the gateway (otherwise the form starts blank, switched on). */
+export function hasSavedPaymentMethod(state: PaymentMethodState): boolean {
+  return Boolean(
+    state.is_active ||
+      state.public_key ||
+      state.test_public_key ||
+      state.has_secret_key ||
+      state.has_test_secret_key ||
+      state.label,
+  );
+}
+
+/** API error field -> form field id. */
+export function formFieldForServerError(config: GatewayConfig, field: string): string | null {
+  const { publicKey, secretKey } = keyFields(config);
+  if (field === "public_key") return publicKey.id;
+  if (field === "secret_key") return secretKey.id;
+  if (field === "label") return "label";
+  return null;
 }
 
 /** Field errors keyed by key id. Keys are only required while payments are allowed. */
@@ -124,6 +205,9 @@ export function validateGatewaySettings(config: GatewayConfig, settings: Gateway
   const mode = settings.testMode ? "test" : "live";
   for (const key of config.keys) {
     const value = (settings.keys[key.id] ?? "").trim();
+    if (!value && key.secret && settings.savedSecret[mode]) {
+      continue; // keep the secret key already saved for this mode
+    }
     if (!value) {
       errors[key.id] = `Enter your ${key.label}.`;
     } else if (key.prefix && !value.startsWith(key.prefix[mode])) {

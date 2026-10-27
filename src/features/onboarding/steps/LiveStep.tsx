@@ -2,22 +2,26 @@
 
 import Link from "next/link";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Badge, Tag } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Notice } from "@/components/ui/Card";
 import { Icon, WhatsAppMark } from "@/components/ui/Icon";
 import { bookingLinkHost } from "@/config/site";
+import { signupApi } from "@/lib/api/signup";
 import { cn } from "@/lib/utils";
 import { draftToProperty } from "../draft-to-property";
 import { useDraft } from "../draft-store";
 import { useSignupSession } from "../signup-session";
 import { PREVIEW_HREF } from "../steps";
 import { LivePreviewCard } from "../components/LivePreviewCard";
-import { PaymentGatewayDialog } from "../components/PaymentGatewayDialog";
+import { PaymentGatewayDialog, type GatewaySaveResult } from "../components/PaymentGatewayDialog";
 import {
   GATEWAY_CONFIGS,
   emptyGatewaySettings,
+  fromPaymentMethodState,
+  hasSavedPaymentMethod,
+  toPaymentMethodRequest,
   type GatewayId,
   type GatewaySettings,
 } from "../payment-gateways";
@@ -38,7 +42,7 @@ const GATEWAYS: readonly {
 
 export function LiveStep() {
   const draft = useDraft();
-  const { state } = useSignupSession();
+  const { state, token } = useSignupSession();
   const loginUrl = state?.login_url;
   // Companies added in the back office may not have a property yet.
   const hasProperty = Boolean(state?.property);
@@ -48,23 +52,57 @@ export function LiveStep() {
   const [copied, setCopied] = useState(false);
   const [demoMessage, setDemoMessage] = useState<string | null>(null);
   const [openGateway, setOpenGateway] = useState<GatewayId | null>(null);
-  // Kept in memory only for this visit; never stored or sent anywhere.
+  // Values shown in the popups. Secret keys are only held while typing: after a save the
+  // field is emptied again (the server never sends them back).
   const [gatewaySettings, setGatewaySettings] = useState<Record<GatewayId, GatewaySettings>>(() => ({
     razorpay: emptyGatewaySettings(GATEWAY_CONFIGS.razorpay),
     stripe: emptyGatewaySettings(GATEWAY_CONFIGS.stripe),
   }));
   const [savedGateways, setSavedGateways] = useState<GatewayId[]>([]);
 
-  function saveGateway(id: GatewayId, settings: GatewaySettings) {
-    const name = GATEWAY_CONFIGS[id].name;
-    setGatewaySettings((current) => ({ ...current, [id]: settings }));
+  // Fill the popups with what is already saved for the property (also after a reload / on another device).
+  useEffect(() => {
+    if (!token || !hasProperty) return;
+    let cancelled = false;
+    signupApi.paymentMethods(token).then((result) => {
+      if (cancelled || !result.ok) return;
+      const saved = result.data.payment_methods;
+      const ids = (Object.keys(GATEWAY_CONFIGS) as GatewayId[]).filter((id) => {
+        const state = saved[id];
+        return state !== undefined && hasSavedPaymentMethod(state);
+      });
+      setGatewaySettings((current) => {
+        const next = { ...current };
+        for (const id of ids) next[id] = fromPaymentMethodState(GATEWAY_CONFIGS[id], current[id], saved[id]!);
+        return next;
+      });
+      setSavedGateways(ids);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [token, hasProperty]);
+  const [paymentMessage, setPaymentMessage] = useState<string | null>(null);
+
+  async function saveGateway(id: GatewayId, settings: GatewaySettings): Promise<GatewaySaveResult> {
+    const config = GATEWAY_CONFIGS[id];
+    if (!token) {
+      return { ok: false, message: "Your session has ended. Please log in again.", errors: {} };
+    }
+    const result = await signupApi.savePaymentMethod(toPaymentMethodRequest(config, settings), token);
+    if (!result.ok) {
+      return { ok: false, message: result.message, errors: result.errors };
+    }
+    const saved = result.data;
+    setGatewaySettings((current) => ({ ...current, [id]: fromPaymentMethodState(config, settings, saved) }));
     setSavedGateways((current) => (current.includes(id) ? current : [...current, id]));
     setOpenGateway(null);
-    setDemoMessage(
-      settings.enabled
-        ? `Your ${name} details look right${settings.testMode ? " (test mode)" : ""}. Connecting needs the StayOwned backend, which isn't part of this static demo, so nothing was sent to ${name}.`
-        : `${name} payments are switched off. Nothing was sent to ${name}.`,
+    setPaymentMessage(
+      saved.is_active
+        ? `${config.name} is switched on${saved.is_test_mode ? " in test mode" : ""}. Guests can pay with it at checkout.`
+        : `${config.name} settings saved. ${config.name} payments are switched off.`,
     );
+    return { ok: true };
   }
 
   async function copyLink() {
@@ -159,6 +197,12 @@ export function LiveStep() {
       {demoMessage ? (
         <Notice tone="info" role="status" className="mt-6" title="Demo mode">
           {demoMessage}
+        </Notice>
+      ) : null}
+
+      {paymentMessage ? (
+        <Notice tone="success" role="status" className="mt-6" title="Payments">
+          {paymentMessage}
         </Notice>
       ) : null}
 
