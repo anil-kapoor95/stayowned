@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/Button";
 import { Notice } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
 import { SafeImage } from "@/components/ui/SafeImage";
+import { importAirbnbPhotos } from "@/lib/api/airbnb-import";
 import { signupApi } from "@/lib/api/signup";
 import { cn } from "@/lib/utils";
+import { updateDraft, useDraft } from "../draft-store";
 import { updateSignupState, useSignupSession } from "../signup-session";
 import { hrefForNextStep } from "../steps";
 import { StepCard, StepFooter } from "../components/WizardShell";
@@ -42,6 +44,36 @@ export function PhotosStep() {
   const [messages, setMessages] = useState<string[]>([]);
   const [status, setStatus] = useState("");
   const [error, setError] = useState<string>();
+  const imported = useDraft().imported;
+  const airbnbPhotos = imported && !imported.photosImported ? imported.photos : [];
+  const [importingAirbnb, setImportingAirbnb] = useState(false);
+
+  /** Adds the photos found on the imported Airbnb listing (step 2) through /api/airbnb-import/photos. */
+  async function addAirbnbPhotos() {
+    if (!token || !imported || importingAirbnb) return;
+    setError(undefined);
+    setMessages([]);
+    setImportingAirbnb(true);
+    setStatus(`Adding ${airbnbPhotos.length} photos from Airbnb…`);
+    const result = await importAirbnbPhotos(
+      imported.listingId,
+      airbnbPhotos.map((photo) => photo.url),
+      token,
+    );
+    setImportingAirbnb(false);
+    if (!result.ok) {
+      setStatus("");
+      setError(result.errors.photos ?? result.message);
+      return;
+    }
+    updateSignupState(result.data.state);
+    updateDraft((current) => (current.imported ? { ...current, imported: { ...current.imported, photosImported: true } } : current));
+    const notes: string[] = [];
+    if (result.data.failed > 0) notes.push(`${result.data.failed} Airbnb photo(s) could not be added.`);
+    if (result.data.skipped > 0) notes.push(`${result.data.skipped} photo(s) were left out: a property can have up to ${MAX_PHOTOS} photos.`);
+    setMessages(notes);
+    setStatus(result.message);
+  }
 
   async function addFiles(fileList: FileList | null) {
     if (!fileList || !token) return;
@@ -160,6 +192,31 @@ export function PhotosStep() {
           }}
         />
       </div>
+
+      {airbnbPhotos.length > 0 && photos.length < MAX_PHOTOS ? (
+        <section
+          aria-labelledby="airbnb-photos-title"
+          className="mt-4 flex flex-col gap-3 rounded-input border border-primary-subtle bg-surface p-4 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div>
+            <h2 id="airbnb-photos-title" className="flex items-center gap-2 font-body text-base font-bold text-heading">
+              <Icon name="image" size={18} className="text-primary" /> {airbnbPhotos.length} photos found on your Airbnb listing
+            </h2>
+            <p className="mt-0.5 text-small text-body">
+              Add them here in one click{photos.length + airbnbPhotos.length > MAX_PHOTOS ? ` (the first ${MAX_PHOTOS - photos.length})` : ""}. You can remove any of them afterwards.
+            </p>
+          </div>
+          <Button
+            variant="secondary"
+            onClick={() => void addAirbnbPhotos()}
+            disabled={importingAirbnb || busy}
+            aria-busy={importingAirbnb}
+            className="shrink-0"
+          >
+            {importingAirbnb ? "Adding photos…" : "Add Airbnb photos"}
+          </Button>
+        </section>
+      ) : null}
 
       {messages.length ? (
         <Notice tone="error" role="alert" className="mt-3" title="Some files were not added">
@@ -282,7 +339,7 @@ export function PhotosStep() {
 
       <StepFooter
         start={
-          <Button href="/setup/property" variant="text">
+          <Button href="/setup/company" variant="text">
             Back
           </Button>
         }

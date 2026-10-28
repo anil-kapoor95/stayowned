@@ -9,6 +9,7 @@ import { SwitchCard } from "@/components/ui/Switch";
 import { cn } from "@/lib/utils";
 import {
   formFieldForServerError,
+  switchTestMode,
   validateGatewaySettings,
   type GatewayConfig,
   type GatewaySettings,
@@ -199,7 +200,7 @@ function GatewayForm({
             description="Try a payment without real money. Turn it off before you go live."
             checked={settings.testMode}
             onChange={(testMode) => {
-              update({ testMode });
+              setSettings((current) => switchTestMode(config, current, testMode));
               setErrors({});
             }}
           />

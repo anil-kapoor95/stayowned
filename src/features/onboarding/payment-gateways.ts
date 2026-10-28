@@ -20,6 +20,8 @@ export interface GatewayKeyField {
   secret: boolean;
   /** Expected key prefixes, e.g. rzp_live_ / rzp_test_. Omitted for secrets the provider doesn't prefix. */
   prefix?: { live: string; test: string };
+  /** Other accepted prefixes, e.g. Stripe restricted keys (rk_live_ / rk_test_). */
+  altPrefixes?: { live: string[]; test: string[] };
 }
 
 export interface GatewayExtraToggle {
@@ -50,6 +52,8 @@ export interface GatewaySettings {
   toggles: Record<string, boolean>;
   /** A secret key is already saved on the server for live / test mode (empty field = keep it). */
   savedSecret: { live: boolean; test: boolean };
+  /** Public keys saved on the server for live / test mode (shown again when test mode is switched). */
+  savedPublic: { live: string; test: string };
 }
 
 export const GATEWAY_CONFIGS: Record<GatewayId, GatewayConfig> = {
@@ -106,10 +110,12 @@ export const GATEWAY_CONFIGS: Record<GatewayId, GatewayConfig> = {
         hint: "This is your Stripe secret key. Keep it private.",
         secret: true,
         prefix: { live: "sk_live_", test: "sk_test_" },
+        altPrefixes: { live: ["rk_live_"], test: ["rk_test_"] },
       },
     ],
-    // From the existing Stripe form. It has no description there, so none is shown.
-    extraToggles: [{ id: "authorization", title: "Enable authorization" }],
+    // "Enable authorization" (old Stripe form) is not offered: the back office has no setting for it,
+    // so the switch would not be saved.
+    extraToggles: [],
   },
 };
 
@@ -121,6 +127,28 @@ export function emptyGatewaySettings(config: GatewayConfig): GatewaySettings {
     keys: Object.fromEntries(config.keys.map((key) => [key.id, ""])),
     toggles: Object.fromEntries(config.extraToggles.map((toggle) => [toggle.id, false])),
     savedSecret: { live: false, test: false },
+    savedPublic: { live: "", test: "" },
+  };
+}
+
+/**
+ * Switches the form between live and test mode: the public key field shows the key saved for the
+ * new mode (unless the host typed a different one) and the typed secret is cleared.
+ */
+export function switchTestMode(config: GatewayConfig, settings: GatewaySettings, testMode: boolean): GatewaySettings {
+  const { publicKey, secretKey } = keyFields(config);
+  const from = settings.testMode ? "test" : "live";
+  const to = testMode ? "test" : "live";
+  const typed = (settings.keys[publicKey.id] ?? "").trim();
+  const keepTyped = typed !== "" && typed !== settings.savedPublic[from] && typed.startsWith(publicKey.prefix?.[to] ?? "");
+  return {
+    ...settings,
+    testMode,
+    keys: {
+      ...settings.keys,
+      [publicKey.id]: keepTyped ? typed : settings.savedPublic[to],
+      [secretKey.id]: "",
+    },
   };
 }
 
@@ -174,6 +202,7 @@ export function fromPaymentMethodState(
       [secretKey.id]: "",
     },
     savedSecret: { live: state.has_secret_key, test: state.has_test_secret_key },
+    savedPublic: { live: state.public_key, test: state.test_public_key },
   };
 }
 
@@ -210,9 +239,9 @@ export function validateGatewaySettings(config: GatewayConfig, settings: Gateway
     }
     if (!value) {
       errors[key.id] = `Enter your ${key.label}.`;
-    } else if (key.prefix && !value.startsWith(key.prefix[mode])) {
+    } else if (key.prefix && ![key.prefix[mode], ...(key.altPrefixes?.[mode] ?? [])].some((p) => value.startsWith(p))) {
       const other = mode === "live" ? "test" : "live";
-      errors[key.id] = value.startsWith(key.prefix[other])
+      errors[key.id] = [key.prefix[other], ...(key.altPrefixes?.[other] ?? [])].some((p) => value.startsWith(p))
         ? `Test mode is ${settings.testMode ? "on" : "off"}, so use your ${mode} key (${key.prefix[mode]}…).`
         : `This doesn't look like a ${config.name} key. It should start with ${key.prefix[mode]}.`;
     } else if (/\s/.test(value)) {

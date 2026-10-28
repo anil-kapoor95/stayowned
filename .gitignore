@@ -42,3 +42,6 @@ next-env.d.ts
 
 # keep the documented example env file
 !.env.example
+
+# local archives (large; never commit)
+/*.zip

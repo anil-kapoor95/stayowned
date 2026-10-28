@@ -1,7 +1,7 @@
 /**
  * Airbnb listing import: URL parsing, the normalised listing shape returned by
  * POST /api/airbnb-import, the server-side clean-up of provider data, and the
- * mapping onto the property form (step 3). Shared by the route and the browser.
+ * mapping onto the property form (step 2). Shared by the route and the browser.
  */
 
 import { PROPERTY_TYPES, type AmenityId, type PropertyType } from "@/types/property";
@@ -9,7 +9,33 @@ import { PROPERTY_TYPES, type AmenityId, type PropertyType } from "@/types/prope
 /** Airbnb web domains: airbnb.com, airbnb.co.in, airbnb.co.uk, airbnb.de, … (any www./m. sub-domain). */
 const AIRBNB_HOST_RE = /^(?:(?:www|m)\.)?airbnb\.(?:com|[a-z]{2}|co\.[a-z]{2}|com\.[a-z]{2})$/i;
 
-export type ListingUrlResult = { ok: true; listingId: string; url: string } | { ok: false; error: string };
+/**
+ * `host` is the Airbnb site the link is on (www.airbnb.co.in, www.airbnb.com, …). The page is read
+ * on that site: www.airbnb.com answers visitors from other countries with a "Redirecting to
+ * www.airbnb.co.in" page instead of the listing.
+ */
+export type ListingUrlResult =
+  | { ok: true; listingId: string; host: string; url: string }
+  | { ok: false; error: string };
+
+/** airbnb.co.in / m.airbnb.co.in / WWW.Airbnb.co.in -> www.airbnb.co.in. Null when not an Airbnb site. */
+export function normalizeAirbnbHost(hostname: string): string | null {
+  const host = hostname.trim().toLowerCase().replace(/\.$/, "");
+  if (!AIRBNB_HOST_RE.test(host)) return null;
+  return `www.${host.replace(/^(?:www|m)\./, "")}`;
+}
+
+/** Photos are only ever downloaded from Airbnb's image servers (a0.muscache.com, …). */
+const AIRBNB_PHOTO_HOST_RE = /^[a-z0-9-]+\.muscache\.com$/i;
+
+export function isAirbnbPhotoUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && !url.username && !url.password && !url.port && AIRBNB_PHOTO_HOST_RE.test(url.hostname);
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Listing links that carry the listing id:
@@ -33,7 +59,8 @@ export function parseAirbnbListingUrl(input: string): ListingUrlResult {
   } catch {
     return { ok: false, error: "This is not a valid link. It should look like https://www.airbnb.com/rooms/12345678" };
   }
-  if (!AIRBNB_HOST_RE.test(url.hostname)) {
+  const host = normalizeAirbnbHost(url.hostname);
+  if (!host || url.username || url.password || url.port) {
     return { ok: false, error: "Paste a link from airbnb.com (or your country's Airbnb site)." };
   }
   if (/\/calendar\/ical\//.test(url.pathname)) {
@@ -47,7 +74,7 @@ export function parseAirbnbListingUrl(input: string): ListingUrlResult {
         "Paste the link of your listing, like /rooms/12345678, or the link of its page in your Airbnb listing editor.",
     };
   }
-  return { ok: true, listingId: match[1], url: `https://www.airbnb.com/rooms/${match[1]}` };
+  return { ok: true, listingId: match[1], host, url: `https://${host}/rooms/${match[1]}` };
 }
 
 /* ------------------------------------------------------------ Normalised listing */
@@ -92,13 +119,28 @@ export interface AirbnbImportResponse {
 
 const LIMITS = { title: 120, description: 5000, address: 255, amenity: 80, amenities: 100, photos: 50, caption: 200 };
 
+const NAMED_ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
+
+/** &amp; &quot; &#39; &#x27; … -> characters (after the tags are removed, so the result is plain text). */
+function decodeEntities(text: string): string {
+  return text.replace(/&(#x[0-9a-f]{1,6}|#\d{1,7}|[a-z]{2,6});/gi, (entity, code: string) => {
+    if (code[0] === "#") {
+      const n = code[1] === "x" || code[1] === "X" ? parseInt(code.slice(2), 16) : parseInt(code.slice(1), 10);
+      return n > 0 && n <= 0x10ffff && (n < 0xd800 || n > 0xdfff) ? String.fromCodePoint(n) : "";
+    }
+    return NAMED_ENTITIES[code.toLowerCase()] ?? entity;
+  });
+}
+
 function cleanText(value: unknown, max: number): string | null {
   if (typeof value !== "string") return null;
-  const text = value
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<[^>]*>/g, "") // no HTML from the provider reaches the form
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
+  const text = decodeEntities(
+    value
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/p>\s*<p[^>]*>/gi, "\n\n")
+      .replace(/<[^>]*>/g, ""), // no HTML from the provider reaches the form
+  )
+    .replace(/\u00a0/g, " ")
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
     .replace(/[ \t]+/g, " ")
     .replace(/\n{3,}/g, "\n\n")
@@ -112,13 +154,11 @@ function cleanNumber(value: unknown, min: number, max: number): number | null {
 }
 
 function cleanPhotoUrl(value: unknown): string | null {
-  if (typeof value !== "string") return null;
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:" ? url.toString() : null;
-  } catch {
-    return null;
-  }
+  if (typeof value !== "string" || !isAirbnbPhotoUrl(value)) return null;
+  const url = new URL(value);
+  url.search = ""; // size parameters are added when a photo is downloaded
+  url.hash = "";
+  return url.toString();
 }
 
 /** Provider data -> ImportedListing. Anything missing, malformed or out of range becomes null / is dropped. */
@@ -189,12 +229,13 @@ export function isEmptyListing(listing: ImportedListing): boolean {
 
 /* ------------------------------------------------------------ Mapping onto the form */
 
+// Airbnb's types ("Entire rental unit", "Tiny home", "Room in boutique hotel", …) -> ours; first match wins.
 const TYPE_RULES: [RegExp, PropertyType][] = [
   [/villa/i, "villa"],
-  [/resort|hotel/i, "resort"],
-  [/cottage|cabin|bungalow|chalet|hut/i, "cottage"],
-  [/apartment|condo|flat|loft|serviced/i, "apartment"],
-  [/homestay|guest ?house|bed and breakfast|b&b|farm|private room|room in|home|house/i, "homestay"],
+  [/resort|hotel|aparthotel|hostel/i, "resort"],
+  [/cottage|cabin|bungalow|chalet|\bhut\b|tiny (?:home|house)|treehouse|\bdome\b|\btent\b|yurt|\bbarn\b|earthen|shepherd|campsite|camper|houseboat|\bboat\b/i, "cottage"],
+  [/apartment|rental unit|condo|flat|loft|serviced|studio|penthouse/i, "apartment"],
+  [/homestay|guest ?house|guest suite|bed and breakfast|b&b|farm|private room|shared room|room in|home|house|townhouse|casa particular/i, "homestay"],
 ];
 
 export function mapPropertyType(text: string | null): PropertyType | null {
@@ -214,7 +255,7 @@ const AMENITY_RULES: [RegExp, AmenityId][] = [
   [/pets? (allowed|friendly|welcome)|pet[- ]friendly/i, "pet-friendly"],
   [/washer|washing machine|laundry/i, "washing-machine"],
   [/housekeeping|cleaning (available|service)/i, "housekeeping"],
-  [/chef|cook/i, "chef"],
+  [/\bchef\b|private cook|cook (?:available|on request)/i, "chef"], // not "Cooking basics"
   [/bbq|barbe(c|q)ue|grill/i, "barbeque"],
 ];
 

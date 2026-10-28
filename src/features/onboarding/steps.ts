@@ -1,8 +1,8 @@
 /** Sign-up steps, in the order of the back end (pjJabbApi::$steps). */
 export const WIZARD_STEPS = [
   { id: "account", number: 1, label: "Account", href: "/setup/account" },
-  { id: "company", number: 2, label: "Company", href: "/setup/company" },
-  { id: "property", number: 3, label: "Property", href: "/setup/property" },
+  { id: "property", number: 2, label: "Property", href: "/setup/property" },
+  { id: "company", number: 3, label: "Company", href: "/setup/company" },
   { id: "photos", number: 4, label: "Photos", href: "/setup/photos" },
   { id: "description", number: 5, label: "AI description", href: "/setup/description" },
   { id: "theme", number: 6, label: "Theme", href: "/setup/theme" },

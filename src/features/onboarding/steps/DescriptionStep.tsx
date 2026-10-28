@@ -74,7 +74,7 @@ export function DescriptionStep() {
       faqs: state?.faqs ?? [],
     };
     if (FIELDS.every((field) => isEmpty(texts, field))) {
-      // Nothing saved yet: start from the description imported from Airbnb (step 3), if any.
+      // Nothing saved yet: start from the description imported from Airbnb (step 2), if any.
       if (!importedDescription) return {};
       return {
         [state?.tone ?? DEFAULT_TONE]: {

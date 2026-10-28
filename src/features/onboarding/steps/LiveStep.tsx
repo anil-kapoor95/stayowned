@@ -59,13 +59,24 @@ export function LiveStep() {
     stripe: emptyGatewaySettings(GATEWAY_CONFIGS.stripe),
   }));
   const [savedGateways, setSavedGateways] = useState<GatewayId[]>([]);
+  const [gatewayLoadError, setGatewayLoadError] = useState<string | null>(null);
 
   // Fill the popups with what is already saved for the property (also after a reload / on another device).
   useEffect(() => {
     if (!token || !hasProperty) return;
     let cancelled = false;
     signupApi.paymentMethods(token).then((result) => {
-      if (cancelled || !result.ok) return;
+      if (cancelled) return;
+      if (!result.ok) {
+        // Without the saved settings the popups would look unconnected: say so instead of failing silently.
+        setGatewayLoadError(
+          result.code === 401
+            ? "Your session has ended. Please log in again to manage payments."
+            : `We couldn't load your saved payment settings (${result.message}). Reload the page before changing them.`,
+        );
+        return;
+      }
+      setGatewayLoadError(null);
       const saved = result.data.payment_methods;
       const ids = (Object.keys(GATEWAY_CONFIGS) as GatewayId[]).filter((id) => {
         const state = saved[id];
@@ -197,6 +208,12 @@ export function LiveStep() {
       {demoMessage ? (
         <Notice tone="info" role="status" className="mt-6" title="Demo mode">
           {demoMessage}
+        </Notice>
+      ) : null}
+
+      {gatewayLoadError ? (
+        <Notice tone="warning" role="alert" className="mt-6" title="Payments">
+          {gatewayLoadError}
         </Notice>
       ) : null}
 

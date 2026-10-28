@@ -29,6 +29,11 @@ function str(value: Json): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
+/** Airbnb's UGC text: the English translation (the page is requested in English) or the host's own words. */
+function ugc(value: Json): string | null {
+  return str(get(value, ["localizedStringWithTranslationPreference"])) ?? str(get(value, ["localizedString"]));
+}
+
 function scriptContents(html: string, attrs: RegExp): string[] {
   const found: string[] = [];
   const re = /<script\b([^>]*)>([\s\S]*?)<\/script>/gi;
@@ -78,11 +83,16 @@ export function parseAirbnbListingPage(html: string): Record<string, unknown> | 
     .map(parseJson)
     .find((item) => get(item, ["@type"]) === "VacationRental");
 
-  if (!pres && !ld) return null;
+  const sharing = get(sections, ["metadata", "sharingConfig"]);
+  if (!pres && !ld && !sharing) return null;
 
+  // "2 guests", "1 bedroom", …; else the share title "Tiny home in Mickleton · ★4.9 · 1 bedroom · 1 bed · 1 bathroom"
   const overviewItems = get(pres, ["overview", "items"]);
-  const overview = readOverview(Array.isArray(overviewItems) ? overviewItems.filter((i): i is string => typeof i === "string") : []);
-  const personCapacity = get(sections, ["metadata", "sharingConfig", "personCapacity"]);
+  const items = Array.isArray(overviewItems) ? overviewItems.filter((i): i is string => typeof i === "string") : [];
+  const overview = readOverview(
+    items.length ? items : (str(get(sharing, ["title"])) ?? "").split("·").map((part) => part.trim()),
+  );
+  const personCapacity = get(sharing, ["personCapacity"]) ?? get(data, ["node", "personCapacity"]);
   const ldGuests = get(ld, ["containsPlace", "occupancy", "value"]);
 
   // "Anjuna, Goa, India" -> city, state, country
@@ -126,12 +136,11 @@ export function parseAirbnbListingPage(html: string): Record<string, unknown> | 
 
   const overviewTitle = str(get(pres, ["overview", "title"]));
   return {
-    title: str(get(pres, ["title", "content", "localizedString"])) ?? str(get(ld, ["name"])),
-    description:
-      str(get(pres, ["descriptions", "longDescriptionHtml", "localizedString"])) ?? str(get(ld, ["description"])),
+    title: ugc(get(pres, ["title", "content"])) ?? ugc(get(data, ["node", "description", "name"])) ?? str(get(ld, ["name"])),
+    description: ugc(get(pres, ["descriptions", "longDescriptionHtml"])) ?? str(get(ld, ["description"])),
     // "Entire home"; or "Entire home in Anjuna, India" without the place
     property_type:
-      str(get(sections, ["metadata", "sharingConfig", "propertyType"])) ??
+      str(get(sharing, ["propertyType"])) ??
       (overviewTitle ? overviewTitle.replace(/\s+in\s+.*$/i, "") : null),
     address: { line1: null, city, state: region, postcode: null, country_code: null, country_name: country },
     bedrooms: overview.bedrooms,

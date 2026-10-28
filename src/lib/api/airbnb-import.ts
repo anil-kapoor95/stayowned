@@ -1,18 +1,15 @@
 import type { ApiResult, FieldErrors } from "./client";
 import type { AirbnbImportResponse } from "@/lib/airbnb-import";
+import type { SignupState } from "./signup";
 
-/** Client for the Next.js route POST /api/airbnb-import (same answer format as the PHP API). */
-export async function importAirbnbListing(
-  url: string,
-  token: string,
-  signal?: AbortSignal,
-): Promise<ApiResult<AirbnbImportResponse>> {
+/** POST to a Next.js import route (same answer format as the PHP API). */
+async function postImportRoute<T>(path: string, body: unknown, token: string, signal?: AbortSignal): Promise<ApiResult<T>> {
   let response: Response;
   try {
-    response = await fetch("/api/airbnb-import", {
+    response = await fetch(path, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ url }),
+      body: JSON.stringify(body),
       signal,
       credentials: "omit",
     });
@@ -38,9 +35,27 @@ export async function importAirbnbListing(
   const code = typeof json.code === "number" ? json.code : response.status;
   const message = typeof json.message === "string" ? json.message : "";
   if (json.status === "OK") {
-    return { ok: true, code, message, data: json.data as AirbnbImportResponse };
+    return { ok: true, code, message, data: json.data as T };
   }
   const errors =
     json.errors && typeof json.errors === "object" && !Array.isArray(json.errors) ? (json.errors as FieldErrors) : {};
   return { ok: false, code, message: message || "Something went wrong. Please try again.", errors };
+}
+
+/** Client for POST /api/airbnb-import: reads the listing for the property form (nothing is saved). */
+export function importAirbnbListing(url: string, token: string, signal?: AbortSignal) {
+  return postImportRoute<AirbnbImportResponse>("/api/airbnb-import", { url }, token, signal);
+}
+
+export interface AirbnbPhotosResponse {
+  state: SignupState;
+  added: number;
+  failed: number;
+  /** Photos left out because the property reached its photo limit. */
+  skipped: number;
+}
+
+/** Client for POST /api/airbnb-import/photos: adds the imported listing's photos to the property (step 4). */
+export function importAirbnbPhotos(listingId: string, photos: string[], token: string, signal?: AbortSignal) {
+  return postImportRoute<AirbnbPhotosResponse>("/api/airbnb-import/photos", { listing_id: listingId, photos }, token, signal);
 }

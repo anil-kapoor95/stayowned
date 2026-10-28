@@ -11,7 +11,7 @@ import { signupApi } from "@/lib/api/signup";
 import { DEFAULT_PHONE_COUNTRY, getPhoneCountry, splitInternational, toInternational, validatePhoneNumber } from "@/lib/phone";
 import { validateEmail, validateRequired } from "@/lib/validation";
 import { setSignupFlash, updateSignupState, useSignupSession } from "../signup-session";
-import { ACCOUNT_EDIT_HREF, hrefForNextStep } from "../steps";
+import { hrefForNextStep, stepNumber } from "../steps";
 import { defaultCountryId, useCountries } from "../use-countries";
 import { StepCard, StepFooter } from "../components/WizardShell";
 
@@ -38,9 +38,10 @@ type Values = Record<(typeof FIELDS)[number], string>;
 const MAX_LOGO_BYTES = 5 * 1024 * 1024;
 
 /**
- * Step 2 — company details (pjActionSignupCompany). Not in the Figma file: it uses
- * the same form components as the other steps. The back end creates the company
- * exactly like Companies > Add company in the back office.
+ * Step 3 — company details (pjActionSignupCompany). Not in the Figma file: it uses
+ * the same form components as the other steps. The back end creates the company with
+ * the property (step 2), filled in from the account and the property address, exactly
+ * like Companies > Add company in the back office; here the host checks and completes it.
  */
 /** "example.com", "www.example.com/page" or a full http(s) link. */
 function isWebsite(value: string) {
@@ -61,22 +62,24 @@ export function CompanyStep() {
   // Phone: country code + number (saved as "+91 9876543210"); starts from the account's WhatsApp number.
   const [initialPhone] = useState(() => {
     const accountCountry = splitInternational(account?.phone ?? "").country;
-    return splitInternational(saved?.phone ?? account?.phone ?? "", accountCountry || DEFAULT_PHONE_COUNTRY);
+    return splitInternational(saved?.phone || account?.phone || "", accountCountry || DEFAULT_PHONE_COUNTRY);
   });
   const [phoneCountry, setPhoneCountry] = useState(initialPhone.country);
 
+  // Empty company fields start from the property (step 2) and the account.
+  const property = state?.property;
   const [values, setValues] = useState<Values>(() => ({
-    name: saved?.name ?? "",
-    address_1: saved?.address_1 ?? "",
+    name: saved?.name || property?.name || account?.name || "",
+    address_1: saved?.address_1 || property?.address_1 || "",
     address_2: saved?.address_2 ?? "",
-    city: saved?.city ?? "",
-    state: saved?.state ?? "",
-    zip: saved?.zip ?? "",
-    country_id: saved?.country_id ?? "",
-    company_email: saved?.email ?? account?.email ?? "",
+    city: saved?.city || property?.city || "",
+    state: saved?.state || property?.state || "",
+    zip: saved?.zip || property?.zip || "",
+    country_id: saved?.country_id || property?.country_id || "",
+    company_email: saved?.email || account?.email || "",
     phone: initialPhone.number,
     website: saved?.website ?? "",
-    contact_person: saved?.contact_person ?? account?.name ?? "",
+    contact_person: saved?.contact_person || account?.name || "",
     legal_name: saved?.legal_name ?? "",
     registration_no: saved?.registration_no ?? "",
     tax_no: saved?.tax_no ?? "",
@@ -193,6 +196,13 @@ export function CompanyStep() {
       {formError ? (
         <Notice tone="error" role="alert" className="mb-5">
           {formError}
+        </Notice>
+      ) : null}
+
+      {(state?.completed_steps ?? 0) < stepNumber("company") && (saved || property) ? (
+        <Notice tone="info" className="mb-5" title="We've filled this in for you">
+          The name and address come from your property, and the contact details from your account. Check them and
+          change anything that&apos;s different for your company.
         </Notice>
       ) : null}
 
@@ -320,7 +330,7 @@ export function CompanyStep() {
 
         <StepFooter
           start={
-            <Button href={ACCOUNT_EDIT_HREF} variant="text">
+            <Button href="/setup/property" variant="text">
               Back
             </Button>
           }

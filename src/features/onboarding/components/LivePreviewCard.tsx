@@ -136,9 +136,9 @@ function DetailsBody({ property }: { property: Property }) {
   return (
     <>
       <div className="flex flex-wrap gap-1.5">
-        <Pill icon="bed">{pluralize(property.bedrooms, "bedroom")}</Pill>
-        <Pill icon="bath">{pluralize(property.bathrooms, "bath")}</Pill>
-        <Pill icon="users">{pluralize(property.maxGuests, "guest")}</Pill>
+        {property.bedrooms > 0 ? <Pill icon="bed">{pluralize(property.bedrooms, "bedroom")}</Pill> : null}
+        {property.bathrooms > 0 ? <Pill icon="bath">{pluralize(property.bathrooms, "bath")}</Pill> : null}
+        {property.maxGuests > 0 ? <Pill icon="users">{pluralize(property.maxGuests, "guest")}</Pill> : null}
         {property.amenities.includes("private-pool") ? (
           <Pill icon="waves" highlight>
             Private Pool
@@ -202,7 +202,13 @@ function PhoneBody({ property, place }: { property: Property; place: string }) {
       ) : null}
       <p className="flex items-start gap-1.5 text-caption text-body">
         <Icon name="mapPin" size={13} className="mt-0.5 shrink-0" />
-        {[place, pluralize(property.maxGuests, "Guest"), pluralize(property.bedrooms, "Bed")].filter(Boolean).join(" · ")}
+        {[
+          place,
+          property.maxGuests > 0 ? pluralize(property.maxGuests, "Guest") : "",
+          property.bedrooms > 0 ? pluralize(property.bedrooms, "Bed") : "",
+        ]
+          .filter(Boolean)
+          .join(" · ")}
       </p>
       <div className="flex flex-wrap gap-1.5 border-t border-divider pt-3">
         {chips.map((amenity) => (

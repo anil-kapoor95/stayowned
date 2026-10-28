@@ -9,7 +9,7 @@ import { hrefForNextStep, WIZARD_STEPS } from "@/features/onboarding/steps";
 
 /**
  * Shown on every page outside the sign-up while a registration on this browser is unfinished:
- * "Step 3 of 6: Property — Continue setup", so a host who left the wizard can pick it up again.
+ * "Step 2 of 6: Property — Continue setup", so a host who left the wizard can pick it up again.
  */
 export function ResumeBanner() {
   const pathname = usePathname();

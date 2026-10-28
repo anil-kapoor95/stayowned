@@ -13,7 +13,8 @@ export function Counter({
 }: {
   id: string;
   label: string;
-  value: number;
+  /** null: not set yet (shows "–"; + starts at max(min, 1)). */
+  value: number | null;
   min?: number;
   max?: number;
   onChange: (value: number) => void;
@@ -30,8 +31,8 @@ export function Counter({
         <button
           type="button"
           className={btn}
-          onClick={() => onChange(Math.max(min, value - 1))}
-          disabled={value <= min}
+          onClick={() => value !== null && onChange(Math.max(min, value - 1))}
+          disabled={value === null || value <= min}
           aria-label={`Decrease ${label.toLowerCase()}`}
         >
           <Icon name="minus" size={14} />
@@ -41,13 +42,14 @@ export function Counter({
           aria-live="polite"
           className="font-heading text-stat text-heading tabular-nums"
         >
-          {value}
+          {value ?? "–"}
+          {value === null ? <span className="sr-only">not set</span> : null}
         </output>
         <button
           type="button"
           className={btn}
-          onClick={() => onChange(Math.min(max, value + 1))}
-          disabled={value >= max}
+          onClick={() => onChange(value === null ? Math.max(min, 1) : Math.min(max, value + 1))}
+          disabled={value !== null && value >= max}
           aria-label={`Increase ${label.toLowerCase()}`}
         >
           <Icon name="plus" size={14} />

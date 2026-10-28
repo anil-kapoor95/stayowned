@@ -9,7 +9,7 @@ import { parseAirbnbListingUrl, type AirbnbImportResponse } from "@/lib/airbnb-i
 import { importAirbnbListing } from "@/lib/api/airbnb-import";
 
 /**
- * "Already on Airbnb? Import your listing" (step 3). Reads the listing through
+ * "Already on Airbnb? Import your listing" (step 2). Reads the listing through
  * POST /api/airbnb-import and hands it to the property form, which the host reviews
  * and saves. Nothing is saved from here.
  */

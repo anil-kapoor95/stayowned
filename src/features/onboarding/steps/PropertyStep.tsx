@@ -8,7 +8,7 @@ import { RadioChips, ToggleChip } from "@/components/ui/Chip";
 import { Counter } from "@/components/ui/Counter";
 import { SelectField, TextField } from "@/components/ui/Field";
 import { Icon } from "@/components/ui/Icon";
-import { AMENITIES, PROPERTY_TYPE_LABELS } from "@/data/amenities";
+import { AMENITIES, PROPERTY_TYPE_LABELS, amenityKey, amenityNamesForSave, splitAmenityNames } from "@/data/amenities";
 import { bookingLinkHost } from "@/config/site";
 import { mapAmenities, mapPropertyType, type AirbnbImportResponse } from "@/lib/airbnb-import";
 import { signupApi } from "@/lib/api/signup";
@@ -17,7 +17,7 @@ import { validateRequired } from "@/lib/validation";
 import { PROPERTY_TYPES, type AmenityId } from "@/types/property";
 import { updateDraft, useDraft } from "../draft-store";
 import { setSignupFlash, updateSignupState, useSignupSession } from "../signup-session";
-import { hrefForNextStep } from "../steps";
+import { ACCOUNT_EDIT_HREF, hrefForNextStep } from "../steps";
 import type { DraftProperty } from "../types";
 import { defaultCountryId, useCountries } from "../use-countries";
 import { StepCard, StepFooter } from "../components/WizardShell";
@@ -44,15 +44,18 @@ const typeOptions = PROPERTY_TYPES.map((value) => ({ value, label: PROPERTY_TYPE
 
 type AddressKey = "address_1" | "city" | "state" | "zip" | "country_id";
 type Errors = Partial<
-  Record<"name" | AddressKey | "ical_url" | "bedrooms" | "bathrooms" | "max_guests" | "price" | "slug", string>
+  Record<
+    "name" | AddressKey | "ical_url" | "bedrooms" | "bathrooms" | "max_guests" | "price" | "slug" | "property_type" | "amenities",
+    string
+  >
 >;
 
 /**
- * Step 3 — property basics (pjActionSignupProperty): name, address, bedrooms,
+ * Step 2 — property basics (pjActionSignupProperty): name, address, bedrooms,
  * bathrooms, guests ("Max people" in Limits), price per night (saved as the
  * property's default price on Properties > Prices) and an optional iCal link.
- * Type, amenities and page link have no field in the API yet: they stay in this
- * browser for the preview.
+ * Type and amenities are saved too (amenities not in the company's list are added to
+ * Options > Features, without duplicates); the page link stays in this browser for now.
  * "Import your listing" fills the form from Airbnb (/api/airbnb-import); the host
  * reviews it and nothing is saved until Continue.
  */
@@ -90,7 +93,9 @@ export function PropertyStep() {
   const [submitting, setSubmitting] = useState(false);
   const [editingSlug, setEditingSlug] = useState(false);
   const [importReview, setImportReview] = useState<ImportReview | null>(null);
-  const countryId = address.country_id || defaultCountryId(countries);
+  // The account's default country is suggested until an import says the country is not known.
+  const [suggestCountry, setSuggestCountry] = useState(true);
+  const countryId = address.country_id || (suggestCountry ? defaultCountryId(countries) : "");
 
   const update = (patch: Partial<DraftProperty>) =>
     updateDraft((current) => {
@@ -109,17 +114,20 @@ export function PropertyStep() {
     if (key === "city" || key === "state") update({ location: [next.city, next.state].filter(Boolean).join(", ") });
   }
 
-  /** Fills the form from an imported Airbnb listing. Only found values replace what is in the form. */
+  /**
+   * Fills the form from an imported Airbnb listing. Every field the listing can fill is replaced:
+   * what Airbnb doesn't show (street address, postcode, price, …) is left empty for the host to add,
+   * so nothing from an earlier entry or import stays behind. Property type keeps its value when unknown.
+   */
   function applyImport({ listing, already_connected }: AirbnbImportResponse) {
     const filled: string[] = [];
     const missing: string[] = [];
     const notes: string[] = [];
     const patch: Partial<DraftProperty> = {};
 
-    if (listing.title) {
-      patch.name = listing.title;
-      filled.push("Property name");
-    } else missing.push("Property name");
+    patch.name = listing.title ?? "";
+    if (listing.title) filled.push("Property name");
+    else missing.push("Property name");
 
     const type = mapPropertyType(listing.property_type);
     if (type) {
@@ -131,46 +139,51 @@ export function PropertyStep() {
     }
 
     const a = listing.address;
-    const nextAddress = { ...address };
-    if (a.line1) nextAddress.address_1 = a.line1;
-    if (a.city) nextAddress.city = a.city;
-    if (a.state) nextAddress.state = a.state;
-    if (a.postcode) nextAddress.zip = a.postcode;
     const countryName = a.country_name?.toLowerCase();
     const country = countries?.find(
       (item) =>
         (a.country_code && item.alpha_2 === a.country_code) || (countryName && item.name?.toLowerCase() === countryName),
     );
-    if (country) nextAddress.country_id = country.id;
+    const nextAddress = {
+      address_1: a.line1 ?? "",
+      city: a.city ?? "",
+      state: a.state ?? "",
+      zip: a.postcode ?? "",
+      country_id: country ? country.id : "",
+    };
     if (a.line1 || a.city) filled.push("Address");
     if (!a.line1) {
       missing.push("Street address");
       notes.push("Airbnb doesn't show the street address publicly: please add it.");
     }
     if (!a.city) missing.push("City");
+    if (!a.postcode) missing.push("Postcode");
+    if (!country) missing.push("Country");
     if ((a.country_code || a.country_name) && !country)
       notes.push(`Country "${a.country_name ?? a.country_code}" isn't in our list: choose it below.`);
     setAddress(nextAddress);
+    setSuggestCountry(false);
     patch.location = [nextAddress.city, nextAddress.state].filter(Boolean).join(", ");
 
-    if (listing.bedrooms !== null) patch.bedrooms = Math.round(listing.bedrooms);
-    if (listing.bathrooms !== null) {
-      patch.bathrooms = Math.round(listing.bathrooms);
-      if (!Number.isInteger(listing.bathrooms))
-        notes.push(`Airbnb lists ${listing.bathrooms} bathrooms; we count whole rooms, so it is ${patch.bathrooms}.`);
-    }
-    if (listing.max_guests !== null) patch.maxGuests = Math.round(listing.max_guests);
-    if (listing.bedrooms !== null || listing.bathrooms !== null || listing.max_guests !== null)
-      filled.push("Rooms and guests");
-    else missing.push("Rooms and guests");
+    patch.bedrooms = listing.bedrooms !== null ? Math.round(listing.bedrooms) : null;
+    patch.bathrooms = listing.bathrooms !== null ? Math.round(listing.bathrooms) : null;
+    if (listing.bathrooms !== null && !Number.isInteger(listing.bathrooms))
+      notes.push(`Airbnb lists ${listing.bathrooms} bathrooms; we count whole rooms, so it is ${patch.bathrooms}.`);
+    patch.maxGuests = listing.max_guests !== null ? Math.round(listing.max_guests) : null;
+    if (listing.bedrooms !== null) filled.push("Bedrooms");
+    else missing.push("Bedrooms");
+    if (listing.bathrooms !== null) filled.push("Bathrooms");
+    else missing.push("Bathrooms");
+    if (listing.max_guests !== null) filled.push("Max guests");
+    else missing.push("Max guests");
 
+    // Ours where they match; every other Airbnb amenity is kept under its own name (saved to your amenities).
     const { matched, unmatched } = mapAmenities(listing.amenities);
-    if (matched.length > 0) {
-      patch.amenities = [...new Set([...property.amenities, ...matched])];
-      filled.push("Amenities");
-    } else missing.push("Amenities");
-    if (unmatched.length > 0)
-      notes.push(`Not on our amenity list: ${unmatched.slice(0, 8).join(", ")}${unmatched.length > 8 ? "…" : ""}. Mention them in your description.`);
+    const extras = splitAmenityNames(unmatched).extras;
+    patch.amenities = matched;
+    patch.extraAmenities = extras;
+    if (matched.length + extras.length > 0) filled.push(`Amenities (${matched.length + extras.length})`);
+    else missing.push("Amenities");
 
     if (listing.price && listing.price.currency === currency) {
       const text = String(listing.price.amount);
@@ -179,6 +192,8 @@ export function PropertyStep() {
       patch.currency = currency;
       filled.push("Price per night");
     } else {
+      setPriceText("");
+      patch.price = null;
       missing.push("Price per night");
       if (listing.price)
         notes.push(`Your Airbnb price is in ${listing.price.currency} and your account uses ${currency}: enter your ${currency} price.`);
@@ -187,7 +202,7 @@ export function PropertyStep() {
 
     if (listing.description) filled.push("Description (shown in step 5)");
     if (listing.photos.length > 0)
-      notes.push(`${listing.photos.length} photo${listing.photos.length === 1 ? "" : "s"} found on Airbnb: add your photos in the Photos step.`);
+      notes.push(`${listing.photos.length} photo${listing.photos.length === 1 ? "" : "s"} found on Airbnb: you can add them in one click in the Photos step.`);
     if (already_connected) notes.push("This listing's Airbnb calendar is already connected to this property.");
     else notes.push("Add your Airbnb calendar link below so dates booked on Airbnb stay blocked.");
 
@@ -205,6 +220,27 @@ export function PropertyStep() {
     setFormError(null);
     setImportReview({ filled, missing, notes });
     window.requestAnimationFrame(() => document.getElementById("import-review")?.focus());
+  }
+
+  const [newAmenity, setNewAmenity] = useState("");
+  const [amenityError, setAmenityError] = useState<string>();
+
+  /** Adds an amenity that isn't on the list (ignored when it is already there, whatever its spelling). */
+  function addAmenity() {
+    const name = newAmenity.trim().replace(/\s+/g, " ");
+    if (!name) return;
+    if (name.length > 80) {
+      setAmenityError("Use at most 80 characters.");
+      return;
+    }
+    const { ids, extras } = splitAmenityNames([name]);
+    if (ids.length) {
+      if (!property.amenities.includes(ids[0])) update({ amenities: [...property.amenities, ids[0]] });
+    } else if (!property.extraAmenities.some((item) => amenityKey(item) === amenityKey(extras[0]))) {
+      update({ extraAmenities: [...property.extraAmenities, extras[0]] });
+    }
+    setNewAmenity("");
+    setAmenityError(undefined);
   }
 
   function toggleAmenity(id: AmenityId) {
@@ -246,11 +282,13 @@ export function PropertyStep() {
         state: address.state.trim(),
         zip: address.zip.trim(),
         country_id: countryId,
-        bedrooms: property.bedrooms,
-        bathrooms: property.bathrooms,
+        bedrooms: property.bedrooms ?? "",
+        bathrooms: property.bathrooms ?? "",
         ical_url: icalUrl.trim(),
         price: priceText,
-        max_guests: property.maxGuests,
+        max_guests: property.maxGuests ?? "",
+        property_type: property.type,
+        amenities: JSON.stringify(amenityNamesForSave(property.amenities, property.extraAmenities)),
       },
       token,
     );
@@ -429,6 +467,47 @@ export function PropertyStep() {
                 {amenity.label}
               </ToggleChip>
             ))}
+            {property.extraAmenities.map((name) => (
+              <span
+                key={name}
+                className="inline-flex items-center gap-1.5 rounded-pill border border-primary bg-primary-soft py-1.5 pl-3 pr-1.5 text-small font-semibold text-heading"
+              >
+                {name}
+                <button
+                  type="button"
+                  onClick={() => update({ extraAmenities: property.extraAmenities.filter((item) => item !== name) })}
+                  aria-label={`Remove ${name}`}
+                  className="grid size-6 place-items-center rounded-pill text-body hover:bg-surface hover:text-heading focus-visible:outline-none focus-visible:focus-ring"
+                >
+                  <Icon name="x" size={13} strokeWidth={2.5} />
+                </button>
+              </span>
+            ))}
+          </div>
+          <div className="mt-3 flex items-start gap-2">
+            <TextField
+              id="property-new-amenity"
+              label="Add another amenity"
+              srOnlyLabel
+              placeholder="Add another amenity, e.g. Hot tub"
+              wrapperClassName="flex-1"
+              maxLength={80}
+              value={newAmenity}
+              onChange={(event) => {
+                setNewAmenity(event.target.value);
+                setAmenityError(undefined);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  addAmenity();
+                }
+              }}
+              error={amenityError ?? errors.amenities}
+            />
+            <Button variant="outline" onClick={addAmenity} disabled={!newAmenity.trim()}>
+              <Icon name="plus" size={15} /> Add
+            </Button>
           </div>
         </fieldset>
 
@@ -524,13 +603,13 @@ export function PropertyStep() {
         </div>
 
         <p className="text-caption text-muted">
-          Property type, amenities and page link are kept in this browser for your preview for now; the address,
-          rooms, guests, price and calendar are saved to your account.
+          Everything here is saved to your account, except the page link, which is kept in this browser for your
+          preview for now. New amenities are added to your amenity list in the dashboard.
         </p>
 
         <StepFooter
           start={
-            <Button href="/setup/company" variant="text">
+            <Button href={ACCOUNT_EDIT_HREF} variant="text">
               Back
             </Button>
           }

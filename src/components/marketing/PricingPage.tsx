@@ -3,8 +3,8 @@ import { PLANS, PLAN_STATS, type Plan } from "@/data/plans";
 import { cn } from "@/lib/utils";
 import { DisplaySectionHeader, FaqSection, LaunchCta } from "./display";
 import { PRICING_FAQS } from "./faq-data";
-import { PlanTickIcon } from "./figma-icons";
 import { HeroAccent, PageHero } from "./PageHero";
+import { PricingPlanCard, planCtaBase, planCtaClass } from "./PricingPlanCard";
 
 /** "Pricing" page from the Figma "pricing page" frame (132:478). */
 export function PricingPage() {
@@ -53,61 +53,20 @@ function Plans() {
 }
 
 function PlanCard({ plan }: { plan: Plan }) {
-  const dark = plan.style === "dark";
-  const popular = plan.style === "popular";
   return (
-    <li
-      className={cn(
-        "relative flex flex-col rounded-plan border-2 px-[38px] py-11",
-        plan.style === "plain" && "border-border bg-surface",
-        popular && "border-brand bg-surface shadow-plan-popular max-md:mt-3 md:-mt-3",
-        dark && "border-secondary bg-secondary",
-      )}
-    >
-      {popular ? (
-        <span className="absolute -top-3.5 left-9 rounded-pill bg-primary px-4 py-[4.6px] font-heading text-caption font-extrabold uppercase leading-[19.2px] tracking-[0.06em] text-on-primary drop-shadow-popular-badge">
-          Most popular
-        </span>
-      ) : null}
-
-      <h3 className={cn("font-heading text-[1.5rem] font-extrabold leading-[1.1] tracking-[-0.035em]", dark ? "text-white" : "text-heading")}>
-        {plan.name}
-      </h3>
-      <p className="flex items-baseline gap-1 pb-[26px] pt-4">
-        <span className={cn("font-display text-price opsz-14", dark ? "text-white" : "text-heading")}>{plan.price}</span>
-        {plan.period ? <span className="font-heading text-[0.9375rem] font-medium text-body">{plan.period}</span> : null}
-      </p>
-
-      <ul className={cn("flex flex-col pb-9", plan.style === "plain" ? "gap-3.5" : "gap-[13.5px]")}>
-        {plan.features.map((feature) => (
-          <li
-            key={feature}
-            className={cn(
-              "flex items-center gap-3 font-heading text-[0.9375rem] font-semibold leading-6",
-              dark ? "text-plan-text-on-dark" : "text-plan-text",
-              plan.style === "plain" && "py-[12.6px]",
-            )}
-          >
-            <PlanTickIcon onDark={dark} />
-            {feature}
-          </li>
-        ))}
-      </ul>
-
-      <Link
-        href={plan.cta.href}
-        className={cn(
-          "flex h-[52px] w-full items-center justify-center rounded-pill px-[29px] font-heading text-[0.9375rem] font-bold leading-6 transition-colors",
-          "focus-visible:outline-none focus-visible:focus-ring",
-          plan.style === "plain" &&
-            "border border-border bg-surface text-heading drop-shadow-plan-button hover:border-border-strong",
-          popular && "bg-primary text-on-primary shadow-plan-cta hover:bg-primary-hover",
-          dark && "bg-white text-heading hover:bg-surface-muted",
-        )}
-      >
-        {plan.cta.label}
-      </Link>
-    </li>
+    <PricingPlanCard
+      name={plan.name}
+      price={plan.price}
+      period={plan.period}
+      features={plan.features}
+      style={plan.style}
+      badge={plan.style === "popular" ? "Most popular" : undefined}
+      cta={
+        <Link href={plan.cta.href} className={cn(planCtaBase, planCtaClass[plan.style])}>
+          {plan.cta.label}
+        </Link>
+      }
+    />
   );
 }
 

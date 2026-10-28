@@ -41,6 +41,10 @@ export interface SignupProperty {
   currency: string;
   /** "Max people" of the property (Limits in the back office). */
   max_guests: number | null;
+  /** villa | homestay | apartment | cottage | resort, or null when not saved yet. */
+  property_type?: string | null;
+  /** Names of the property's amenities (Properties > Features in the back office). */
+  amenities?: string[];
 }
 
 export type ContentTone = "warm" | "premium" | "simple";
@@ -122,6 +126,28 @@ export interface ApiTheme {
     price: string;
     page_background: string;
   };
+  /** The free theme (the first one). */
+  free?: boolean;
+  /** Needs a plan with themes that this account doesn't have. */
+  locked?: boolean;
+}
+
+/** A plan from the back office (Subscriptions > Plans), for the upgrade dialog. */
+export interface ApiPlan {
+  id: number;
+  code: string;
+  name: string;
+  description: string;
+  /** null: no price set yet (can't be bought online). */
+  price: number | null;
+  currency: string;
+  billing_interval: "month" | "year";
+  interval_count: number;
+  trial_days: number;
+  features: { key: string; label: string }[];
+  includes_themes: boolean;
+  /** Can be bought online (active, public, with a price). */
+  purchasable: boolean;
 }
 
 /** Saved online payment gateway of the host's property. Secret keys are never sent back, only whether one is saved. */
@@ -193,7 +219,19 @@ export const signupApi = {
     ),
 
   themes: (token?: string | null) =>
-    apiRequest<{ themes: ApiTheme[]; default_id: string; allowed: boolean }>("pjActionGetThemes", {}, { token }),
+    apiRequest<{ themes: ApiTheme[]; default_id: string; free_id?: string; allowed: boolean }>(
+      "pjActionGetThemes",
+      {},
+      { token },
+    ),
+
+  /** Plans to buy, the account's current plan and the dashboard page where plans are bought. */
+  plans: (token?: string | null) =>
+    apiRequest<{
+      plans: ApiPlan[];
+      current: { code: string; name: string; status: string } | null;
+      my_plan_url: string;
+    }>("pjActionGetPlans", {}, { token }),
 
   theme: (paletteId: string, token: string) =>
     apiRequest<SignupState>("pjActionSignupTheme", { palette_id: paletteId }, { token }),

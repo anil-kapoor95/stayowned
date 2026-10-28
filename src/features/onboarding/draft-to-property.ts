@@ -21,13 +21,14 @@ export function draftToProperty(draft: WizardDraft): Property {
     slug: property.slug,
     name: property.name.trim() || "Your property",
     type: property.type,
-    summary: `${property.bedrooms} BHK ${typeLabel}`,
+    summary: property.bedrooms ? `${property.bedrooms} BHK ${typeLabel}` : typeLabel,
     headline: copy.headline,
     description: copy.description,
     location: { locality, region, country },
-    bedrooms: property.bedrooms,
-    bathrooms: property.bathrooms,
-    maxGuests: property.maxGuests,
+    // Not known yet: 0, which the preview leaves out.
+    bedrooms: property.bedrooms ?? 0,
+    bathrooms: property.bathrooms ?? 0,
+    maxGuests: property.maxGuests ?? 0,
     amenities: property.amenities,
     highlights: property.amenities.slice(0, 4).map((id) => getAmenity(id).label),
     // No photo yet: no image (a sample photo would look like the host's own).

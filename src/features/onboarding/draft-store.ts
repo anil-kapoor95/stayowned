@@ -1,9 +1,11 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { splitAmenityNames } from "@/data/amenities";
 import { properties } from "@/data/properties";
 import type { SignupState } from "@/lib/api/signup";
 import { slugify } from "@/lib/utils";
+import { PROPERTY_TYPES, type PropertyType } from "@/types/property";
 import type { WizardDraft } from "./types";
 
 /**
@@ -31,6 +33,7 @@ export const DEFAULT_DRAFT: WizardDraft = {
     bathrooms: sample.bathrooms,
     maxGuests: sample.maxGuests,
     amenities: ["private-pool", "wifi", "air-conditioning", "kitchen"],
+    extraAmenities: [],
     currency: sample.price.currency,
     price: sample.price.amount,
     slug: sample.slug,
@@ -159,12 +162,19 @@ export function syncDraftFromSignup(state: SignupState) {
         ...next.property,
         name: p.name,
         location: [p.city, p.state].filter(Boolean).join(", "),
-        bedrooms: p.bedrooms !== null && p.bedrooms !== "" ? Number(p.bedrooms) : next.property.bedrooms,
-        bathrooms: p.bathrooms !== null && p.bathrooms !== "" ? Number(p.bathrooms) : next.property.bathrooms,
+        // Saved values; empty = not known (left empty on purpose, e.g. not found on Airbnb).
+        bedrooms: p.bedrooms !== null && p.bedrooms !== "" ? Number(p.bedrooms) : null,
+        bathrooms: p.bathrooms !== null && p.bathrooms !== "" ? Number(p.bathrooms) : null,
         slug: next.property.slugEdited ? next.property.slug : slugify(p.name),
         // The rate saved in the back office (it may have been changed there since the sign-up).
         price: p.price ?? next.property.price,
-        maxGuests: p.max_guests ?? next.property.maxGuests,
+        maxGuests: p.max_guests ?? null,
+        ...(p.property_type && (PROPERTY_TYPES as readonly string[]).includes(p.property_type)
+          ? { type: p.property_type as PropertyType }
+          : {}),
+        ...(Array.isArray(p.amenities)
+          ? (({ ids, extras }) => ({ amenities: ids, extraAmenities: extras }))(splitAmenityNames(p.amenities))
+          : {}),
         currency: p.currency || state.currency || next.property.currency,
       };
       next.photos = state.photos.map((photo) => ({

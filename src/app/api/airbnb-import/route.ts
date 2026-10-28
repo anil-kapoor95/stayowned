@@ -9,10 +9,10 @@ import { signupApi } from "@/lib/api/signup";
 import { getImportProvider } from "@/lib/server/airbnb-import";
 
 /**
- * POST /api/airbnb-import — reads an Airbnb listing for the property form (step 3).
+ * POST /api/airbnb-import — reads an Airbnb listing for the property form (step 2).
  *
  * Headers: Authorization: Bearer <signup_token>, Content-Type: application/json
- * Body:    { "url": "https://www.airbnb.com/rooms/12345678" }
+ * Body:    { "url": "https://www.airbnb.co.in/rooms/12345678" } (the page is read on the site of the link)
  * Answer:  { status: "OK" | "ERR", code, message, errors?: {url}, data?: AirbnbImportResponse }
  *
  * Nothing is saved here: the host reviews the filled-in form and saves it with Continue.
@@ -99,7 +99,7 @@ export async function POST(request: Request) {
 
   let result;
   try {
-    result = await provider.fetchListing(parsed.listingId, AbortSignal.timeout(PROVIDER_TIMEOUT_MS));
+    result = await provider.fetchListing(parsed.listingId, parsed.host, AbortSignal.timeout(PROVIDER_TIMEOUT_MS));
   } catch (error) {
     const name = (error as { name?: string })?.name ?? "unknown";
     console.error(`[api/airbnb-import] provider ${provider.id} failed (${name})`);
@@ -119,7 +119,9 @@ export async function POST(request: Request) {
       case "blocked":
         return respond(502, "Airbnb didn't let us read this listing right now. Please try again later, or fill in the details below.");
       case "unreadable":
-        console.error(`[api/airbnb-import] provider ${provider.id}: listing data not found on the page`);
+        console.error(
+          `[api/airbnb-import] provider ${provider.id}: listing data not found on the page${result.message ? ` (${result.message})` : ""}`,
+        );
         return respond(502, "We couldn't read the details on this Airbnb page. Please fill in the details below.");
       case "rate_limited":
         return respond(429, "Airbnb is busy. Please try again in a few minutes.");
@@ -129,7 +131,7 @@ export async function POST(request: Request) {
           "Automatic import from Airbnb isn't available yet. Please fill in the details below — it only takes a few minutes.",
         );
       default:
-        console.error(`[api/airbnb-import] provider ${provider.id} error`);
+        console.error(`[api/airbnb-import] provider ${provider.id} error${result.message ? ` (${result.message})` : ""}`);
         return respond(502, "We couldn't read this listing. Please try again, or fill in the details below.");
     }
   }

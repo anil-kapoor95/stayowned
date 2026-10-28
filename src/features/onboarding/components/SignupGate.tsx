@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Notice } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
 import { clearSignupFlash, ensureSignupLoaded, useSignupSession, type SignupSession } from "../signup-session";
-import { ACCOUNT_HREF, LIVE_HREF, hrefForNextStep } from "../steps";
+import { ACCOUNT_HREF, LIVE_HREF, hrefForNextStep, stepNumber } from "../steps";
 
 type GateStep = number | "live" | "preview";
 
@@ -21,8 +21,8 @@ function redirectFor(session: SignupSession, step: GateStep, editing: boolean): 
     if (step === "preview" && !state.property) return LIVE_HREF;
     return step === "live" || step === "preview" ? null : LIVE_HREF;
   }
-  // The preview needs a property (step 3) to show.
-  if (step === "preview") return state.completed_steps >= 3 ? null : hrefForNextStep(state.next_step);
+  // The preview needs a property (step 2) to show.
+  if (step === "preview") return state.completed_steps >= stepNumber("property") ? null : hrefForNextStep(state.next_step);
   if (step === "live") return hrefForNextStep(state.next_step);
   // Coming back to the start of a sign-up that is under way: continue where it stopped.
   if (step === 1 && !editing && state.completed_steps >= 1) return hrefForNextStep(state.next_step);

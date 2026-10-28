@@ -13,10 +13,13 @@ export interface DraftProperty {
   name: string;
   type: PropertyType;
   location: string;
-  bedrooms: number;
-  bathrooms: number;
-  maxGuests: number;
+  /** null: not known (e.g. not found on an imported Airbnb listing). */
+  bedrooms: number | null;
+  bathrooms: number | null;
+  maxGuests: number | null;
   amenities: AmenityId[];
+  /** Amenities that aren't on our list (from an Airbnb import, the back office or typed by the host). */
+  extraAmenities: string[];
   /** ISO 4217 code of the account (from the API); CurrencyCode for the sample draft. */
   currency: CurrencyCode | (string & {});
   price: number | null;
@@ -45,12 +48,14 @@ export interface DraftContent {
   faqOverride: Faq[] | null;
 }
 
-/** What an Airbnb import found beyond the step 3 fields (the description pre-fills step 5). */
+/** What an Airbnb import found beyond the step 2 fields (the description pre-fills step 5). */
 export interface DraftImport {
   listingId: string;
   url: string;
   description: string | null;
   photos: { url: string; caption: string | null }[];
+  /** The photos were added to the property (step 4), so they are not offered again. */
+  photosImported?: boolean;
 }
 
 export interface WizardDraft {
