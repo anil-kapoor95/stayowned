@@ -11,7 +11,7 @@ import { Icon } from "@/components/ui/Icon";
 import { signupApi, type ContentField, type SignupFaq } from "@/lib/api/signup";
 import { cn, countWords } from "@/lib/utils";
 import { TONES } from "../copy-templates";
-import { updateDraft } from "../draft-store";
+import { updateDraft, useDraft } from "../draft-store";
 import { updateSignupState, useSignupSession } from "../signup-session";
 import { hrefForNextStep } from "../steps";
 import type { Tone } from "../types";
@@ -64,6 +64,7 @@ export function DescriptionStep() {
   const router = useRouter();
   const { token, state } = useSignupSession();
   const aiAvailable = Boolean(state?.ai_available);
+  const importedDescription = useDraft().imported?.description?.trim() ?? "";
 
   const [tone, setTone] = useState<Tone>(state?.tone ?? DEFAULT_TONE);
   const [versions, setVersions] = useState<Partial<Record<Tone, Version>>>(() => {
@@ -72,7 +73,16 @@ export function DescriptionStep() {
       description: state?.description ?? "",
       faqs: state?.faqs ?? [],
     };
-    if (FIELDS.every((field) => isEmpty(texts, field))) return {};
+    if (FIELDS.every((field) => isEmpty(texts, field))) {
+      // Nothing saved yet: start from the description imported from Airbnb (step 3), if any.
+      if (!importedDescription) return {};
+      return {
+        [state?.tone ?? DEFAULT_TONE]: {
+          texts: { ...texts, description: importedDescription },
+          sources: { headline: "empty", description: "edited", faqs: "empty" },
+        },
+      };
+    }
     const sources = Object.fromEntries(
       FIELDS.map((field) => [field, isEmpty(texts, field) ? "empty" : "saved"]),
     ) as Record<Field, Source>;

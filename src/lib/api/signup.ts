@@ -225,6 +225,14 @@ export const signupApi = {
 
   countries: () => apiRequest<{ countries: Country[] }>("pjActionGetCountries"),
 
+  /** Is this Airbnb listing already connected (its iCal link saved for a property)? Used by /api/airbnb-import. */
+  checkAirbnbListing: (listingId: string, token: string) =>
+    apiRequest<{ listing_id: string; status: "none" | "this_property" | "company" | "other" }>(
+      "pjActionCheckAirbnbListing",
+      { listing_id: listingId },
+      { token },
+    ),
+
   /** Saved Razorpay / Stripe settings of the property, to fill in the payment popups. */
   paymentMethods: (token: string) =>
     apiRequest<{

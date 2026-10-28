@@ -53,6 +53,7 @@ export const DEFAULT_DRAFT: WizardDraft = {
   },
   theme: "casa",
   published: false,
+  imported: null,
 };
 
 let state: WizardDraft = DEFAULT_DRAFT;

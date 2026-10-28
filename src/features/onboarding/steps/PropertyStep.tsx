@@ -10,6 +10,7 @@ import { SelectField, TextField } from "@/components/ui/Field";
 import { Icon } from "@/components/ui/Icon";
 import { AMENITIES, PROPERTY_TYPE_LABELS } from "@/data/amenities";
 import { bookingLinkHost } from "@/config/site";
+import { mapAmenities, mapPropertyType, type AirbnbImportResponse } from "@/lib/airbnb-import";
 import { signupApi } from "@/lib/api/signup";
 import { slugify } from "@/lib/utils";
 import { validateRequired } from "@/lib/validation";
@@ -20,6 +21,7 @@ import { hrefForNextStep } from "../steps";
 import type { DraftProperty } from "../types";
 import { defaultCountryId, useCountries } from "../use-countries";
 import { StepCard, StepFooter } from "../components/WizardShell";
+import { AirbnbImportCard } from "../components/AirbnbImportCard";
 
 /** "8500", "99.5" (max 2 decimals) from what the host typed. */
 function cleanPrice(value: string) {
@@ -51,7 +53,15 @@ type Errors = Partial<
  * property's default price on Properties > Prices) and an optional iCal link.
  * Type, amenities and page link have no field in the API yet: they stay in this
  * browser for the preview.
+ * "Import your listing" fills the form from Airbnb (/api/airbnb-import); the host
+ * reviews it and nothing is saved until Continue.
  */
+
+interface ImportReview {
+  filled: string[];
+  missing: string[];
+  notes: string[];
+}
 export function PropertyStep() {
   const router = useRouter();
   const draft = useDraft();
@@ -79,6 +89,7 @@ export function PropertyStep() {
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [editingSlug, setEditingSlug] = useState(false);
+  const [importReview, setImportReview] = useState<ImportReview | null>(null);
   const countryId = address.country_id || defaultCountryId(countries);
 
   const update = (patch: Partial<DraftProperty>) =>
@@ -96,6 +107,104 @@ export function PropertyStep() {
     clearError(key);
     // The live preview shows "City, State".
     if (key === "city" || key === "state") update({ location: [next.city, next.state].filter(Boolean).join(", ") });
+  }
+
+  /** Fills the form from an imported Airbnb listing. Only found values replace what is in the form. */
+  function applyImport({ listing, already_connected }: AirbnbImportResponse) {
+    const filled: string[] = [];
+    const missing: string[] = [];
+    const notes: string[] = [];
+    const patch: Partial<DraftProperty> = {};
+
+    if (listing.title) {
+      patch.name = listing.title;
+      filled.push("Property name");
+    } else missing.push("Property name");
+
+    const type = mapPropertyType(listing.property_type);
+    if (type) {
+      patch.type = type;
+      filled.push("Property type");
+    } else {
+      missing.push("Property type");
+      if (listing.property_type) notes.push(`Airbnb calls it "${listing.property_type}": choose the closest type.`);
+    }
+
+    const a = listing.address;
+    const nextAddress = { ...address };
+    if (a.line1) nextAddress.address_1 = a.line1;
+    if (a.city) nextAddress.city = a.city;
+    if (a.state) nextAddress.state = a.state;
+    if (a.postcode) nextAddress.zip = a.postcode;
+    const countryName = a.country_name?.toLowerCase();
+    const country = countries?.find(
+      (item) =>
+        (a.country_code && item.alpha_2 === a.country_code) || (countryName && item.name?.toLowerCase() === countryName),
+    );
+    if (country) nextAddress.country_id = country.id;
+    if (a.line1 || a.city) filled.push("Address");
+    if (!a.line1) {
+      missing.push("Street address");
+      notes.push("Airbnb doesn't show the street address publicly: please add it.");
+    }
+    if (!a.city) missing.push("City");
+    if ((a.country_code || a.country_name) && !country)
+      notes.push(`Country "${a.country_name ?? a.country_code}" isn't in our list: choose it below.`);
+    setAddress(nextAddress);
+    patch.location = [nextAddress.city, nextAddress.state].filter(Boolean).join(", ");
+
+    if (listing.bedrooms !== null) patch.bedrooms = Math.round(listing.bedrooms);
+    if (listing.bathrooms !== null) {
+      patch.bathrooms = Math.round(listing.bathrooms);
+      if (!Number.isInteger(listing.bathrooms))
+        notes.push(`Airbnb lists ${listing.bathrooms} bathrooms; we count whole rooms, so it is ${patch.bathrooms}.`);
+    }
+    if (listing.max_guests !== null) patch.maxGuests = Math.round(listing.max_guests);
+    if (listing.bedrooms !== null || listing.bathrooms !== null || listing.max_guests !== null)
+      filled.push("Rooms and guests");
+    else missing.push("Rooms and guests");
+
+    const { matched, unmatched } = mapAmenities(listing.amenities);
+    if (matched.length > 0) {
+      patch.amenities = [...new Set([...property.amenities, ...matched])];
+      filled.push("Amenities");
+    } else missing.push("Amenities");
+    if (unmatched.length > 0)
+      notes.push(`Not on our amenity list: ${unmatched.slice(0, 8).join(", ")}${unmatched.length > 8 ? "…" : ""}. Mention them in your description.`);
+
+    if (listing.price && listing.price.currency === currency) {
+      const text = String(listing.price.amount);
+      setPriceText(text);
+      patch.price = listing.price.amount;
+      patch.currency = currency;
+      filled.push("Price per night");
+    } else {
+      missing.push("Price per night");
+      if (listing.price)
+        notes.push(`Your Airbnb price is in ${listing.price.currency} and your account uses ${currency}: enter your ${currency} price.`);
+      else notes.push("Airbnb only shows prices for chosen dates: please enter your price per night.");
+    }
+
+    if (listing.description) filled.push("Description (shown in step 5)");
+    if (listing.photos.length > 0)
+      notes.push(`${listing.photos.length} photo${listing.photos.length === 1 ? "" : "s"} found on Airbnb: add your photos in the Photos step.`);
+    if (already_connected) notes.push("This listing's Airbnb calendar is already connected to this property.");
+    else notes.push("Add your Airbnb calendar link below so dates booked on Airbnb stay blocked.");
+
+    update(patch);
+    updateDraft((current) => ({
+      ...current,
+      imported: {
+        listingId: listing.listing_id,
+        url: listing.url,
+        description: listing.description,
+        photos: listing.photos,
+      },
+    }));
+    setErrors({});
+    setFormError(null);
+    setImportReview({ filled, missing, notes });
+    window.requestAnimationFrame(() => document.getElementById("import-review")?.focus());
   }
 
   function toggleAmenity(id: AmenityId) {
@@ -172,40 +281,28 @@ export function PropertyStep() {
         </Notice>
       ) : null}
 
-      <section
-        aria-labelledby="import-title"
-        className="rounded-input border border-primary-subtle bg-primary-tint p-4 sm:p-5"
-      >
-        <h2 id="import-title" className="flex items-center gap-2 font-body text-base font-bold text-heading">
-          <Icon name="link" size={18} className="text-primary" /> Already on Airbnb? Import your calendar
-        </h2>
-        <p className="mt-1 text-small text-body">
-          Paste your calendar (iCal) link and we&apos;ll block the dates that are already booked, and keep them in sync.
-          On Airbnb: Listing &gt; Availability &gt; Connect calendars &gt; Export calendar.
-        </p>
-        <div className="mt-3">
-          <TextField
-            id="property-ical_url"
-            label="Calendar (iCal) link"
-            srOnlyLabel
-            type="url"
-            inputMode="url"
-            placeholder="https://www.airbnb.co.in/calendar/ical/12345678.ics?s=…"
-            prefix={<Icon name="link" size={16} className="text-primary" />}
-            value={icalUrl}
-            onChange={(event) => {
-              setIcalUrl(event.target.value);
-              clearError("ical_url");
-            }}
-            error={errors.ical_url}
-          />
-        </div>
-        <p className="mt-2 text-caption text-muted">
-          Not on Airbnb? Leave this empty. Booking.com and Vrbo calendar links work too.
-        </p>
-      </section>
+      <AirbnbImportCard token={token} onImported={applyImport} />
 
       <form noValidate onSubmit={onSubmit} className="mt-7 grid grid-cols-1 gap-6">
+        {importReview ? (
+          <div id="import-review" tabIndex={-1} className="grid gap-3 focus-visible:outline-none">
+            <Notice tone="success" role="status" title="Imported from Airbnb — please check the details below">
+              {importReview.filled.length > 0 ? <p className="mt-1">Filled in: {importReview.filled.join(", ")}.</p> : null}
+              {importReview.missing.length > 0 ? (
+                <p className="mt-1">Not found on Airbnb, please add: {importReview.missing.join(", ")}.</p>
+              ) : null}
+              {importReview.notes.length > 0 ? (
+                <ul className="mt-2 list-disc pl-5">
+                  {importReview.notes.map((note) => (
+                    <li key={note}>{note}</li>
+                  ))}
+                </ul>
+              ) : null}
+              <p className="mt-2">Nothing is saved until you press Continue.</p>
+            </Notice>
+          </div>
+        ) : null}
+
         <TextField
           id="property-name"
           label="Property name"
@@ -362,6 +459,26 @@ export function PropertyStep() {
               ? `Your rates differ by weekday (set in your dashboard); the lowest is shown. A new price here replaces them for every day.`
               : "Your default rate for every night. You can set weekend or seasonal rates later in your dashboard."
           }
+        />
+
+        <TextField
+          id="property-ical_url"
+          label={
+            <>
+              Airbnb calendar (iCal) link <span className="font-normal text-body">(optional)</span>
+            </>
+          }
+          type="url"
+          inputMode="url"
+          placeholder="https://www.airbnb.co.in/calendar/ical/12345678.ics?s=…"
+          prefix={<Icon name="link" size={16} className="text-primary" />}
+          value={icalUrl}
+          onChange={(event) => {
+            setIcalUrl(event.target.value);
+            clearError("ical_url");
+          }}
+          error={errors.ical_url}
+          hint="Blocks the dates already booked on Airbnb and keeps them in sync. On Airbnb: Listing > Availability > Connect calendars > Export calendar. Booking.com and Vrbo links work too."
         />
 
         <div className="rounded-input bg-surface-muted px-4 py-3">

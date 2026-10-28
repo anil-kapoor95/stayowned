@@ -45,6 +45,14 @@ export interface DraftContent {
   faqOverride: Faq[] | null;
 }
 
+/** What an Airbnb import found beyond the step 3 fields (the description pre-fills step 5). */
+export interface DraftImport {
+  listingId: string;
+  url: string;
+  description: string | null;
+  photos: { url: string; caption: string | null }[];
+}
+
 export interface WizardDraft {
   account: DraftAccount | null;
   property: DraftProperty;
@@ -52,4 +60,6 @@ export interface WizardDraft {
   content: DraftContent;
   theme: ThemeId;
   published: boolean;
+  /** Last Airbnb import, or null. */
+  imported: DraftImport | null;
 }
