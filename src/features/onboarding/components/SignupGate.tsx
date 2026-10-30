@@ -24,8 +24,8 @@ function redirectFor(session: SignupSession, step: GateStep, editing: boolean): 
   // The preview needs a property (step 2) to show.
   if (step === "preview") return state.completed_steps >= stepNumber("property") ? null : hrefForNextStep(state.next_step);
   if (step === "live") return hrefForNextStep(state.next_step);
-  // Coming back to the start of a sign-up that is under way: continue where it stopped.
-  if (step === 1 && !editing && state.completed_steps >= 1) return hrefForNextStep(state.next_step);
+  // Step 1 is done once: coming back to it (also /setup/account/edit) continues where the sign-up stopped.
+  if (step === 1 && state.completed_steps >= 1) return hrefForNextStep(state.next_step);
   // Steps cannot be skipped: every earlier step must be done.
   if (step > state.completed_steps + 1) return hrefForNextStep(state.next_step);
   return null;
@@ -34,7 +34,7 @@ function redirectFor(session: SignupSession, step: GateStep, editing: boolean): 
 /**
  * Wraps a sign-up page: loads the saved sign-up (token in localStorage), sends the
  * visitor to the step they have to do next, and shows one-off messages.
- * `/setup/account/edit` (editing) lets a host change step 1 after doing it.
+ * Step 1 (account) is done once: `/setup/account/edit` also sends the host on to the next step.
  */
 export function SignupGate({
   step,

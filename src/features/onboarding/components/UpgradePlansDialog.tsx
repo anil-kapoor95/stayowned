@@ -32,11 +32,16 @@ function periodLabel(plan: ApiPlan): string | undefined {
   return plan.interval_count > 1 ? `/${plan.interval_count} ${unit}s` : `/${unit}`;
 }
 
-/** Pricing page look: plans without themes plain, the first plan with themes "Most popular", higher ones dark. */
-function cardStyle(plan: ApiPlan, plans: ApiPlan[]): PlanCardStyle {
-  if (!plan.includes_themes) return "plain";
-  const firstWithThemes = plans.find((item) => item.includes_themes);
-  return firstWithThemes?.id === plan.id ? "popular" : "dark";
+/** Does the plan include the feature the dialog is about (themes by default)? */
+function planIncludes(plan: ApiPlan, featureKey?: string): boolean {
+  return featureKey ? plan.features.some((feature) => feature.key === featureKey) : plan.includes_themes;
+}
+
+/** Pricing page look: plans without the feature plain, the first plan with it "Most popular", higher ones dark. */
+function cardStyle(plan: ApiPlan, plans: ApiPlan[], featureKey?: string): PlanCardStyle {
+  if (!planIncludes(plan, featureKey)) return "plain";
+  const firstWith = plans.find((item) => planIncludes(item, featureKey));
+  return firstWith?.id === plan.id ? "popular" : "dark";
 }
 
 /**
@@ -62,6 +67,10 @@ export function UpgradePlansDialog({
   open,
   token,
   themeName,
+  title = "Unlock premium themes",
+  intro = "The first theme is free on every plan; choose a plan with themes to use the others.",
+  keepFreeLabel = "Keep the free theme",
+  featureKey,
   onClose,
   onKeepFree,
   onRefresh,
@@ -70,6 +79,13 @@ export function UpgradePlansDialog({
   token: string | null;
   /** The paid theme the host chose. */
   themeName: string | null;
+  /** Window title and text (default: premium themes). */
+  title?: string;
+  intro?: string;
+  /** Button of the plans without the feature (default "Keep the free theme"). */
+  keepFreeLabel?: string;
+  /** Plan feature that unlocks it (plan.features[].key), e.g. payment_gateway_choice. Default: themes. */
+  featureKey?: string;
   onClose: () => void;
   /** Close and use the free theme. */
   onKeepFree: () => void;
@@ -103,8 +119,8 @@ export function UpgradePlansDialog({
     <Dialog
       open={open}
       onClose={onClose}
-      size="xl"
-      title="Unlock premium themes"
+      size="2xl"
+      title={title}
       description={
         <>
           {themeName ? (
@@ -112,7 +128,7 @@ export function UpgradePlansDialog({
               <strong className="text-heading">{themeName}</strong> is a premium theme.{" "}
             </>
           ) : null}
-          The first theme is free on every plan; choose a plan with themes to use the others.
+          {intro}
         </>
       }
       icon={
@@ -140,8 +156,8 @@ export function UpgradePlansDialog({
           </Button>
         </Notice>
       ) : !data ? (
-        <div className="grid gap-6 md:grid-cols-3" aria-hidden="true">
-          {[0, 1, 2].map((i) => (
+        <div className="grid grid-flow-col auto-cols-[minmax(15.5rem,1fr)] gap-5 overflow-hidden" aria-hidden="true">
+          {[0, 1, 2, 3].map((i) => (
             <div key={i} className="h-96 animate-pulse rounded-plan bg-surface-muted" />
           ))}
         </div>
@@ -154,21 +170,20 @@ export function UpgradePlansDialog({
           to unlock premium themes.
         </Notice>
       ) : (
-        <div className="px-1 pb-2 pt-6 sm:px-2">
+        <div className="-mx-5 overflow-x-auto px-5 pb-3 sm:-mx-6 sm:px-6">
+          {/* All plans side by side in one row (scrolls sideways when the window is narrow). */}
           <ul
-            className={cn(
-              "mx-auto grid grid-cols-1 items-start gap-6",
-              plans.length === 2 && "max-w-3xl md:grid-cols-2",
-              plans.length >= 3 && "md:grid-cols-3",
-            )}
+            className="grid snap-x auto-cols-[minmax(15.5rem,1fr)] grid-flow-col items-stretch gap-5 pt-7"
+            aria-label="Plans"
           >
             {plans.map((plan, index) => {
-              const style = cardStyle(plan, plans);
+              const style = cardStyle(plan, plans, featureKey);
               const current = data.current?.code === plan.code;
               const cta = cn(planCtaBase, planCtaClass[style]);
               return (
                 <PricingPlanCard
                   key={plan.id}
+                  compact
                   name={plan.name}
                   price={formatPrice(plan)}
                   period={periodLabel(plan)}
@@ -181,9 +196,9 @@ export function UpgradePlansDialog({
                       <button type="button" className={cta} onClick={onRefresh}>
                         Check my themes again
                       </button>
-                    ) : !plan.includes_themes ? (
+                    ) : !planIncludes(plan, featureKey) ? (
                       <button type="button" className={cta} onClick={onKeepFree}>
-                        Keep the free theme
+                        {keepFreeLabel}
                       </button>
                     ) : plan.purchasable ? (
                       <a href={data.myPlanUrl} target="_blank" rel="noopener noreferrer" className={cta}>

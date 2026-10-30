@@ -8,14 +8,14 @@ import { Button } from "@/components/ui/Button";
 import { Notice } from "@/components/ui/Card";
 import { Icon, WhatsAppMark } from "@/components/ui/Icon";
 import { bookingLinkHost } from "@/config/site";
-import { signupApi } from "@/lib/api/signup";
-import { cn } from "@/lib/utils";
+import { signupApi, type PaymentMethodState } from "@/lib/api/signup";
+import { cn, slugify } from "@/lib/utils";
 import { draftToProperty } from "../draft-to-property";
 import { useDraft } from "../draft-store";
 import { useSignupSession } from "../signup-session";
-import { PREVIEW_HREF } from "../steps";
 import { LivePreviewCard } from "../components/LivePreviewCard";
 import { PaymentGatewayDialog, type GatewaySaveResult } from "../components/PaymentGatewayDialog";
+import { UpgradePlansDialog } from "../components/UpgradePlansDialog";
 import {
   GATEWAY_CONFIGS,
   emptyGatewaySettings,
@@ -26,18 +26,13 @@ import {
   type GatewaySettings,
 } from "../payment-gateways";
 
-const GATEWAYS: readonly {
-  name: string;
-  initial: string;
-  tone: string;
-  text: string;
-  /** Gateways with a connection popup. */
-  connect?: GatewayId;
-}[] = [
-  { connect: "stripe", name: "Stripe", initial: "S", tone: "bg-brand-stripe", text: "International cards, Apple Pay & 135+ currencies" },
-  { name: "PayPal", initial: "P", tone: "bg-brand-paypal", text: "Trusted by global travelers worldwide" },
-  { name: "Cashfree", initial: "C", tone: "bg-brand-cashfree", text: "UPI, cards, and instant settlement" },
-  { name: "PayU", initial: "U", tone: "bg-brand-payu", text: "UPI, cards, EMI & PayLater options" },
+/** Order and plan of the payment methods until the back office answers (it decides, see pjJabbApi::$paymentGateways). */
+const DEFAULT_METHODS: { id: GatewayId; tier: "free" | "pro" }[] = [
+  { id: "paypal", tier: "free" },
+  { id: "authorize", tier: "pro" },
+  { id: "razorpay", tier: "pro" },
+  { id: "stripe", tier: "pro" },
+  { id: "cash", tier: "free" },
 ];
 
 export function LiveStep() {
@@ -49,16 +44,23 @@ export function LiveStep() {
   const property = draftToProperty(draft);
   const slug = property.slug || "your-page";
   const link = `${bookingLinkHost}/${slug}`;
+  // The host's website: /property/<property name> (the server finds the property by this link).
+  const websiteHref = state?.property?.name ? `/property/${slugify(state.property.name)}` : null;
   const [copied, setCopied] = useState(false);
   const [demoMessage, setDemoMessage] = useState<string | null>(null);
   const [openGateway, setOpenGateway] = useState<GatewayId | null>(null);
   // Values shown in the popups. Secret keys are only held while typing: after a save the
   // field is emptied again (the server never sends them back).
-  const [gatewaySettings, setGatewaySettings] = useState<Record<GatewayId, GatewaySettings>>(() => ({
-    razorpay: emptyGatewaySettings(GATEWAY_CONFIGS.razorpay),
-    stripe: emptyGatewaySettings(GATEWAY_CONFIGS.stripe),
-  }));
+  const [gatewaySettings, setGatewaySettings] = useState<Record<GatewayId, GatewaySettings>>(
+    () =>
+      Object.fromEntries(
+        (Object.keys(GATEWAY_CONFIGS) as GatewayId[]).map((id) => [id, emptyGatewaySettings(GATEWAY_CONFIGS[id])]),
+      ) as Record<GatewayId, GatewaySettings>,
+  );
   const [savedGateways, setSavedGateways] = useState<GatewayId[]>([]);
+  // Payment methods of the property as the back office sees them (order, free / Pro, locked, on / off).
+  const [methods, setMethods] = useState<PaymentMethodState[] | null>(null);
+  const [plansOpen, setPlansOpen] = useState(false);
   const [gatewayLoadError, setGatewayLoadError] = useState<string | null>(null);
 
   // Fill the popups with what is already saved for the property (also after a reload / on another device).
@@ -77,17 +79,18 @@ export function LiveStep() {
         return;
       }
       setGatewayLoadError(null);
-      const saved = result.data.payment_methods;
-      const ids = (Object.keys(GATEWAY_CONFIGS) as GatewayId[]).filter((id) => {
-        const state = saved[id];
-        return state !== undefined && hasSavedPaymentMethod(state);
-      });
+      const list = result.data.payment_methods.filter((state) => state.payment_method in GATEWAY_CONFIGS);
+      const saved = list.filter(hasSavedPaymentMethod);
+      setMethods(list);
       setGatewaySettings((current) => {
         const next = { ...current };
-        for (const id of ids) next[id] = fromPaymentMethodState(GATEWAY_CONFIGS[id], current[id], saved[id]!);
+        for (const state of saved) {
+          const id = state.payment_method;
+          next[id] = fromPaymentMethodState(GATEWAY_CONFIGS[id], current[id], state);
+        }
         return next;
       });
-      setSavedGateways(ids);
+      setSavedGateways(saved.map((state) => state.payment_method));
     });
     return () => {
       cancelled = true;
@@ -107,10 +110,13 @@ export function LiveStep() {
     const saved = result.data;
     setGatewaySettings((current) => ({ ...current, [id]: fromPaymentMethodState(config, settings, saved) }));
     setSavedGateways((current) => (current.includes(id) ? current : [...current, id]));
+    setMethods((current) => current?.map((state) => (state.payment_method === id ? saved : state)) ?? current);
     setOpenGateway(null);
     setPaymentMessage(
       saved.is_active
-        ? `${config.name} is switched on${saved.is_test_mode ? " in test mode" : ""}. Guests can pay with it at checkout.`
+        ? config.offline
+          ? "Cash payments are switched on. Guests can choose to pay when they arrive."
+          : `${config.name} is switched on${saved.is_test_mode ? " in test mode" : ""}. Guests can pay with it at checkout.`
         : `${config.name} settings saved. ${config.name} payments are switched off.`,
     );
     return { ok: true };
@@ -128,6 +134,14 @@ export function LiveStep() {
 
   const whatsappText = encodeURIComponent(`Book ${property.name} directly here: https://${link}`);
 
+  // Methods in the back office's order; free ones under "Set up payments", the others under "More gateways on Pro".
+  const methodList = methods
+    ? methods.map((state) => ({ id: state.payment_method, tier: state.tier, state }))
+    : DEFAULT_METHODS.map((method) => ({ ...method, state: undefined as PaymentMethodState | undefined }));
+  const freeMethods = methodList.filter((method) => method.tier === "free");
+  const proMethods = methodList.filter((method) => method.tier === "pro");
+  const proLocked = proMethods.some((method) => method.state?.locked);
+
   return (
     <div className="container-page py-8 sm:py-10">
       {hasProperty ? (
@@ -142,7 +156,7 @@ export function LiveStep() {
             </p>
             <h1 id="live-title" className="mt-5 text-hero text-on-dark">
               {property.name} is{" "}
-              <span className="text-brand underline decoration-wavy decoration-from-font underline-offset-8">
+              <span className="text-brand">
                 {draft.published ? "live" : "ready"}
               </span>
               .
@@ -180,7 +194,7 @@ export function LiveStep() {
                 <WhatsAppMark /> Share on WhatsApp
                 <span className="sr-only"> (opens in a new tab)</span>
               </Button>
-              <Button variant="onDark" size="lg" href={PREVIEW_HREF}>
+              <Button variant="onDark" size="lg" href={websiteHref ?? "/setup/preview"}>
                 <Icon name="externalLink" size={17} /> View my page
               </Button>
               {loginUrl ? (
@@ -234,6 +248,22 @@ export function LiveStep() {
         />
       ))}
 
+      <UpgradePlansDialog
+        open={plansOpen}
+        token={token}
+        themeName={null}
+        featureKey="payment_gateway_choice"
+        title="Unlock more payment gateways"
+        intro="PayPal and cash are free on every plan. Authorize.Net, Razorpay and Stripe come with the plans that include payment gateway choice."
+        keepFreeLabel="Keep PayPal and cash"
+        onClose={() => setPlansOpen(false)}
+        onKeepFree={() => setPlansOpen(false)}
+        onRefresh={() => {
+          setPlansOpen(false);
+          window.location.reload();
+        }}
+      />
+
       <div className="mt-10 grid grid-cols-1 items-start gap-7 lg:grid-cols-[minmax(0,1fr)_21rem]">
         <section aria-labelledby="checklist-title">
           <p className="text-eyebrow uppercase text-primary">Checklist to launch</p>
@@ -243,78 +273,69 @@ export function LiveStep() {
 
           <ol className="mt-6 grid gap-5">
             <li className="rounded-card border-2 border-primary bg-primary-tint p-5 sm:p-6">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+              <div className="flex gap-4">
                 <StepNumber n={1} solid />
-                <div className="flex-1">
+                <div className="min-w-0 flex-1">
                   <h3 className="flex flex-wrap items-center gap-2 font-heading text-title">
                     Set up payments <Badge variant="warning">Needed to accept bookings</Badge>
                   </h3>
                   <p className="mt-1 text-small text-body-strong">
-                    Connect Razorpay to get paid instantly by UPI (Google Pay, PhonePe), credit/debit cards, and net
-                    banking.
+                    Free on every plan: get paid online with PayPal, or let guests pay in cash when they arrive.
                   </p>
+                  <ul className="mt-4 grid gap-3">
+                    {freeMethods.map((method) => (
+                      <li key={method.id}>
+                        <MethodRow
+                          config={GATEWAY_CONFIGS[method.id]}
+                          state={method.state}
+                          connected={savedGateways.includes(method.id)}
+                          onOpen={() => setOpenGateway(method.id)}
+                        />
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-                <Button size="lg" aria-haspopup="dialog" onClick={() => setOpenGateway("razorpay")}>
-                  {savedGateways.includes("razorpay") ? "Edit Razorpay" : "Connect Razorpay"}{" "}
-                  <Icon name="arrowRight" size={16} />
-                </Button>
               </div>
             </li>
 
-            <li
-              className="list-none rounded-card border border-border bg-card p-5 shadow-card sm:p-7"
-              aria-label="More gateways on Pro"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <h3 className="font-heading text-title">More Gateways on pro</h3>
-                <Link
-                  href="/pricing"
-                  className="flex items-center gap-1.5 rounded-sm text-small font-semibold text-heading hover:text-link-hover focus-visible:outline-none focus-visible:focus-ring"
-                >
-                  <Icon name="lock" size={14} /> Upgrade for international payments
-                </Link>
-              </div>
-              <ul className="mt-5 grid gap-3 sm:grid-cols-2">
-                {GATEWAYS.map((gateway) => {
-                  const content = (
-                    <>
-                      <span
-                        className={cn(
-                          "grid size-9 shrink-0 place-items-center rounded-sm font-bold text-white",
-                          gateway.tone,
-                        )}
-                      >
-                        {gateway.initial}
-                      </span>
-                      <div>
-                        <p className="flex items-center gap-2 font-semibold text-heading">
-                          {gateway.name} <Badge variant="pro">Pro</Badge>
-                        </p>
-                        <p className="mt-0.5 text-caption text-body">{gateway.text}</p>
-                      </div>
-                    </>
-                  );
-                  const connect = gateway.connect;
-                  return (
-                    <li key={gateway.name}>
-                      {connect ? (
-                        <button
-                          type="button"
-                          aria-haspopup="dialog"
-                          onClick={() => setOpenGateway(connect)}
-                          className="flex h-full w-full gap-3 rounded-input border border-border bg-background p-4 text-left transition-colors hover:border-border-strong focus-visible:outline-none focus-visible:focus-ring"
-                        >
-                          {content}
-                          <span className="sr-only">: open {gateway.name} connection settings</span>
-                        </button>
-                      ) : (
-                        <div className="flex h-full gap-3 rounded-input border border-border bg-background p-4">{content}</div>
-                      )}
+            {proMethods.length > 0 ? (
+              <li
+                className="list-none rounded-card border border-border bg-card p-5 shadow-card sm:p-7"
+                aria-label="More gateways on Pro"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h3 className="font-heading text-title">More gateways on Pro</h3>
+                  {proLocked ? (
+                    <button
+                      type="button"
+                      aria-haspopup="dialog"
+                      onClick={() => setPlansOpen(true)}
+                      className="flex items-center gap-1.5 rounded-sm text-small font-semibold text-heading hover:text-link-hover focus-visible:outline-none focus-visible:focus-ring"
+                    >
+                      <Icon name="lock" size={14} /> Upgrade for more payment gateways
+                    </button>
+                  ) : (
+                    <Tag>
+                      <Icon name="check" size={12} className="mr-1" /> Included in your plan
+                    </Tag>
+                  )}
+                </div>
+                <ul className="mt-5 grid gap-3 sm:grid-cols-2">
+                  {proMethods.map((method) => (
+                    <li key={method.id}>
+                      <MethodRow
+                        config={GATEWAY_CONFIGS[method.id]}
+                        state={method.state}
+                        connected={savedGateways.includes(method.id)}
+                        pro
+                        locked={Boolean(method.state?.locked)}
+                        onOpen={() => (method.state?.locked ? setPlansOpen(true) : setOpenGateway(method.id))}
+                      />
                     </li>
-                  );
-                })}
-              </ul>
-            </li>
+                  ))}
+                </ul>
+              </li>
+            ) : null}
 
             <li className="rounded-card border border-border bg-card p-5 shadow-card sm:p-6">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
@@ -382,8 +403,8 @@ export function LiveStep() {
           <SideCard title="How it works">
             <ol className="grid gap-4">
               {[
-                ["Click Connect", "and sign in to your Razorpay account (or create one in 2 minutes)."],
-                ["Guests pay directly", "on your branded StayOwned website via UPI or card."],
+                ["Click Connect", "and add the keys of your PayPal account, or switch on cash payments."],
+                ["Guests pay directly", "on your StayOwned website, online or in cash on arrival."],
                 [
                   "Direct deposit",
                   ": Payments settle straight into your verified bank account with 0% StayOwned commission.",
@@ -412,6 +433,53 @@ export function LiveStep() {
         </aside>
       </div>
     </div>
+  );
+}
+
+/** One payment method on the list: logo, name, plan, status and its button. */
+function MethodRow({
+  config,
+  state,
+  connected,
+  pro = false,
+  locked = false,
+  onOpen,
+}: {
+  config: (typeof GATEWAY_CONFIGS)[GatewayId];
+  state?: PaymentMethodState;
+  connected: boolean;
+  pro?: boolean;
+  locked?: boolean;
+  onOpen: () => void;
+}) {
+  const on = Boolean(state?.is_active);
+  const status = locked ? null : on ? (state?.is_test_mode ? "On · test mode" : "On") : connected ? "Off" : null;
+  const action = locked ? "Unlock" : config.offline ? (on ? "Edit" : "Turn on") : connected ? "Edit" : "Connect";
+  return (
+    <button
+      type="button"
+      aria-haspopup="dialog"
+      onClick={onOpen}
+      className="flex h-full w-full items-center gap-3 rounded-input border border-border bg-background p-4 text-left transition-colors hover:border-border-strong focus-visible:outline-none focus-visible:focus-ring"
+    >
+      <span
+        aria-hidden="true"
+        className={cn("grid size-9 shrink-0 place-items-center rounded-sm font-bold text-white", config.tileClass, locked && "opacity-60")}
+      >
+        {config.initial}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex flex-wrap items-center gap-2 font-semibold text-heading">
+          {config.name}
+          {pro ? <Badge variant="pro">Pro</Badge> : <Badge variant="free">Free</Badge>}
+          {status ? <Tag className={on ? "text-success" : undefined}>{status}</Tag> : null}
+        </span>
+        <span className="mt-0.5 block text-caption text-body">{config.summary}</span>
+      </span>
+      <span className="shrink-0 text-small font-semibold text-primary">
+        {action} <Icon name="arrowRight" size={14} className="inline" />
+      </span>
+    </button>
   );
 }
 

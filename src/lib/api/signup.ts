@@ -92,6 +92,12 @@ export interface SignupState {
   currency: string;
   theme: { palette_id: string | null; font_family: string } | null;
   ai_available: boolean;
+  /** AI writing is set up but not in the account's plan (paid plans only). */
+  ai_locked?: boolean;
+  /** Sign of the account's currency (back-office currency data). */
+  currency_sign?: string;
+  /** System options > Price format and currency position. */
+  price_format?: { price_format: number; currency_place: "front" | "back" };
   ai_generations_left: number;
   login_url?: string;
   /* Extra keys some steps add */
@@ -150,28 +156,39 @@ export interface ApiPlan {
   purchasable: boolean;
 }
 
-/** Saved online payment gateway of the host's property. Secret keys are never sent back, only whether one is saved. */
+export type PaymentMethodId = "paypal" | "authorize" | "razorpay" | "stripe" | "cash";
+
+/**
+ * A payment method of the host's property (Properties > Payments in the back office).
+ * Secret fields are never sent back, only whether one is saved (per mode).
+ */
 export interface PaymentMethodState {
-  payment_method: "razorpay" | "stripe";
+  payment_method: PaymentMethodId;
+  name: string;
+  /** free: every plan (PayPal, cash); pro: plans with "Payment gateway choice". */
+  tier: "free" | "pro";
+  /** Cash: only switched on / off (no keys, no test mode). */
+  offline: boolean;
+  /** Pro method without a plan that includes it. */
+  locked: boolean;
   is_active: boolean;
   is_test_mode: boolean;
   label: string;
-  public_key: string;
-  test_public_key: string;
-  has_secret_key: boolean;
-  has_test_secret_key: boolean;
+  /** Saved values of the non-secret fields, per mode. */
+  values: { live: Record<string, string>; test: Record<string, string> };
+  /** Secret fields with a saved value, per mode. */
+  saved_secrets: { live: Record<string, boolean>; test: Record<string, boolean> };
   /** Online gateways switched on for the property (sent back by a save). */
   active_gateways?: string[];
 }
 
-/** Fields of pjActionSavePaymentMethod. An empty secret_key keeps the saved one for that mode. */
+/** Fields of pjActionSavePaymentMethod. keys: JSON {field: value} for the mode sent (an empty secret keeps the saved one). */
 export interface PaymentMethodRequest {
-  payment_method: "razorpay" | "stripe";
+  payment_method: PaymentMethodId;
   is_active: 0 | 1;
   is_test_mode: 0 | 1;
   label: string;
-  public_key: string;
-  secret_key: string;
+  keys: string;
 }
 
 /* ------------------------------------------------------------ Endpoints */
@@ -225,6 +242,23 @@ export const signupApi = {
       { token },
     ),
 
+  /** Currencies of System options > Currency (with signs), the account's currency and the price format. */
+  currencies: (token?: string | null) =>
+    apiRequest<{
+      currencies: { code: string; sign: string }[];
+      default: string;
+      price_format: number;
+      currency_place: "front" | "back";
+    }>("pjActionGetCurrencies", {}, { token }),
+
+  /** Is this company name free? (The sign-up's own company doesn't count.) */
+  checkCompanyName: (name: string, token?: string | null) =>
+    apiRequest<{ available: boolean }>("pjActionCheckCompanyName", { name }, { token }),
+
+  /** Is this property name free? (The sign-up's own property doesn't count.) */
+  checkPropertyName: (name: string, token?: string | null) =>
+    apiRequest<{ available: boolean }>("pjActionCheckPropertyName", { name }, { token }),
+
   /** Plans to buy, the account's current plan and the dashboard page where plans are bought. */
   plans: (token?: string | null) =>
     apiRequest<{
@@ -274,11 +308,12 @@ export const signupApi = {
   /** Saved Razorpay / Stripe settings of the property, to fill in the payment popups. */
   paymentMethods: (token: string) =>
     apiRequest<{
-      payment_methods: Partial<Record<PaymentMethodState["payment_method"], PaymentMethodState>>;
+      payment_methods: PaymentMethodState[];
+      pro_allowed: boolean;
       active_gateways: string[];
     }>("pjActionGetPaymentMethods", {}, { token }),
 
-  /** Saves one payment gateway of the property (402: the plan allows no more gateways). */
+  /** Saves one payment method of the property (402: a Pro method without the plan, or no more gateways allowed). */
   savePaymentMethod: (fields: PaymentMethodRequest, token: string) =>
     apiRequest<PaymentMethodState>("pjActionSavePaymentMethod", { ...fields }, { token }),
 };

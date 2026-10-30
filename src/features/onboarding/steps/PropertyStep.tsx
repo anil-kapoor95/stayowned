@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { Notice } from "@/components/ui/Card";
 import { RadioChips, ToggleChip } from "@/components/ui/Chip";
@@ -12,12 +12,13 @@ import { AMENITIES, PROPERTY_TYPE_LABELS, amenityKey, amenityNamesForSave, split
 import { bookingLinkHost } from "@/config/site";
 import { mapAmenities, mapPropertyType, type AirbnbImportResponse } from "@/lib/airbnb-import";
 import { signupApi } from "@/lib/api/signup";
+import { DEFAULT_PRICE_FORMAT, formatAdminPrice, type PriceFormat } from "@/lib/price-format";
 import { slugify } from "@/lib/utils";
 import { validateRequired } from "@/lib/validation";
 import { PROPERTY_TYPES, type AmenityId } from "@/types/property";
 import { updateDraft, useDraft } from "../draft-store";
 import { setSignupFlash, updateSignupState, useSignupSession } from "../signup-session";
-import { ACCOUNT_EDIT_HREF, hrefForNextStep } from "../steps";
+import { hrefForNextStep } from "../steps";
 import type { DraftProperty } from "../types";
 import { defaultCountryId, useCountries } from "../use-countries";
 import { StepCard, StepFooter } from "../components/WizardShell";
@@ -30,22 +31,12 @@ function cleanPrice(value: string) {
   return whole.slice(0, 8) + (rest.length > 0 ? `.${decimals}` : "");
 }
 
-function currencySymbol(code: string) {
-  try {
-    const part = new Intl.NumberFormat("en", { style: "currency", currency: code })
-      .formatToParts(0)
-      .find((item) => item.type === "currency");
-    return part?.value ?? code;
-  } catch {
-    return code;
-  }
-}
 const typeOptions = PROPERTY_TYPES.map((value) => ({ value, label: PROPERTY_TYPE_LABELS[value] }));
 
 type AddressKey = "address_1" | "city" | "state" | "zip" | "country_id";
 type Errors = Partial<
   Record<
-    "name" | AddressKey | "ical_url" | "bedrooms" | "bathrooms" | "max_guests" | "price" | "slug" | "property_type" | "amenities",
+    "name" | AddressKey | "ical_url" | "bedrooms" | "bathrooms" | "max_guests" | "price" | "currency" | "slug" | "property_type" | "amenities",
     string
   >
 >;
@@ -87,7 +78,37 @@ export function PropertyStep() {
     const value = saved?.price ?? property.price;
     return value ? String(value) : "";
   });
-  const currency = state?.currency || saved?.currency || property.currency;
+  // Currencies, signs and price format come from the back office (System options).
+  const [currencyData, setCurrencyData] = useState<{
+    currencies: { code: string; sign: string }[];
+    format: PriceFormat;
+  } | null>(null);
+  const [currencyChoice, setCurrencyChoice] = useState<string | null>(null);
+  const currency = currencyChoice || saved?.currency || state?.currency || property.currency;
+  const currencySign = currencyData?.currencies.find((item) => item.code === currency)?.sign ?? currency;
+  const priceFormat = currencyData?.format ?? state?.price_format ?? DEFAULT_PRICE_FORMAT;
+  useEffect(() => {
+    let active = true;
+    void signupApi.currencies(token).then((result) => {
+      if (!active || !result.ok) return;
+      setCurrencyData({
+        currencies: result.data.currencies,
+        format: { price_format: result.data.price_format, currency_place: result.data.currency_place },
+      });
+    });
+    return () => {
+      active = false;
+    };
+  }, [token]);
+  // Property names are unique: checked when the host leaves the field (and again on save).
+  const [nameChecked, setNameChecked] = useState<string | null>(null);
+  async function checkName() {
+    const name = property.name.trim().replace(/\s+/g, " ");
+    if (name.length < 2 || name === nameChecked) return;
+    setNameChecked(name);
+    const result = await signupApi.checkPropertyName(name, token);
+    if (!result.ok && result.errors.name) setErrors((current) => ({ ...current, name: result.errors.name }));
+  }
   const [errors, setErrors] = useState<Errors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -286,6 +307,7 @@ export function PropertyStep() {
         bathrooms: property.bathrooms ?? "",
         ical_url: icalUrl.trim(),
         price: priceText,
+        currency,
         max_guests: property.maxGuests ?? "",
         property_type: property.type,
         amenities: JSON.stringify(amenityNamesForSave(property.amenities, property.extraAmenities)),
@@ -350,6 +372,7 @@ export function PropertyStep() {
             update({ name: event.target.value });
             clearError("name");
           }}
+          onBlur={() => void checkName()}
           error={errors.name}
           required
         />
@@ -511,34 +534,56 @@ export function PropertyStep() {
           </div>
         </fieldset>
 
-        <TextField
-          id="property-price"
-          label="Price per night"
-          inputMode="decimal"
-          autoComplete="off"
-          placeholder="8500"
-          required
-          prefix={
-            <span className="text-small font-semibold text-heading">
-              {currencySymbol(currency)}
-              {currencySymbol(currency) !== currency ? <span className="ml-1 font-normal text-body">{currency}</span> : null}
-            </span>
-          }
-          prefixPadding={currencySymbol(currency) !== currency ? "pl-[4.75rem]" : "pl-16"}
-          value={priceText}
-          onChange={(event) => {
-            const text = cleanPrice(event.target.value);
-            setPriceText(text);
-            clearError("price");
-            update({ price: Number(text) > 0 ? Number(text) : null, currency });
-          }}
-          error={errors.price}
-          hint={
-            saved?.price_varies
-              ? `Your rates differ by weekday (set in your dashboard); the lowest is shown. A new price here replaces them for every day.`
-              : "Your default rate for every night. You can set weekend or seasonal rates later in your dashboard."
-          }
-        />
+        <div className="grid gap-5 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] sm:gap-3">
+          <SelectField
+            id="property-currency"
+            label="Currency"
+            value={currency}
+            onChange={(event) => {
+              setCurrencyChoice(event.target.value);
+              clearError("currency");
+              update({ currency: event.target.value });
+            }}
+            error={errors.currency}
+            disabled={!currencyData}
+            hint="Used for all your prices."
+          >
+            {!currencyData ? <option value={currency}>{currency}</option> : null}
+            {currencyData?.currencies.map((item) => (
+              <option key={item.code} value={item.code}>
+                {item.code}
+                {item.sign !== item.code ? ` (${item.sign})` : ""}
+              </option>
+            ))}
+          </SelectField>
+          <TextField
+            id="property-price"
+            label="Price per night"
+            inputMode="decimal"
+            autoComplete="off"
+            placeholder="8500"
+            required
+            prefix={<span className="text-small font-semibold text-heading">{currencySign}</span>}
+            prefixPadding={currencySign.length > 2 ? "pl-16" : "pl-10"}
+            value={priceText}
+            onChange={(event) => {
+              const text = cleanPrice(event.target.value);
+              setPriceText(text);
+              clearError("price");
+              update({ price: Number(text) > 0 ? Number(text) : null, currency });
+            }}
+            error={errors.price}
+            hint={
+              Number(priceText) > 0
+                ? `Guests see: ${formatAdminPrice(Number(priceText), currencySign, priceFormat)} per night.${
+                    saved?.price_varies ? " Your weekday rates differ; a new price here replaces them for every day." : ""
+                  }`
+                : saved?.price_varies
+                  ? "Your rates differ by weekday (set in your dashboard); the lowest is shown. A new price here replaces them for every day."
+                  : "Your default rate for every night. You can set weekend or seasonal rates later in your dashboard."
+            }
+          />
+        </div>
 
         <TextField
           id="property-ical_url"
@@ -608,11 +653,6 @@ export function PropertyStep() {
         </p>
 
         <StepFooter
-          start={
-            <Button href={ACCOUNT_EDIT_HREF} variant="text">
-              Back
-            </Button>
-          }
           end={
             <Button type="submit" size="lg" disabled={submitting} aria-busy={submitting}>
               {submitting ? "Saving…" : "Continue"}

@@ -5,6 +5,7 @@ import { fontBody, fontDisplay, fontHeading } from "@/lib/fonts";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { ResumeBanner } from "@/components/layout/ResumeBanner";
+import { MarketingOnly } from "@/components/layout/MarketingOnly";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url ?? siteConfig.fallbackUrl),
@@ -39,12 +40,16 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         >
           Skip to main content
         </a>
-        <Header />
-        <ResumeBanner />
+        <MarketingOnly>
+          <Header />
+          <ResumeBanner />
+        </MarketingOnly>
         <main id="main" className="flex flex-1 flex-col">
           {children}
         </main>
-        <Footer />
+        <MarketingOnly>
+          <Footer />
+        </MarketingOnly>
       </body>
     </html>
   );

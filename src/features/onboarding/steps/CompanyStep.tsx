@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { Notice } from "@/components/ui/Card";
 import { SelectField, TextareaField, TextField } from "@/components/ui/Field";
@@ -66,10 +66,12 @@ export function CompanyStep() {
   });
   const [phoneCountry, setPhoneCountry] = useState(initialPhone.country);
 
-  // Empty company fields start from the property (step 2) and the account.
+  // Empty company fields start from the property (step 2) and the account. The company or host name
+  // is typed by the host (the name the back end gave the company is only a placeholder until step 3 is saved).
   const property = state?.property;
+  const confirmed = (state?.completed_steps ?? 0) >= stepNumber("company");
   const [values, setValues] = useState<Values>(() => ({
-    name: saved?.name || property?.name || account?.name || "",
+    name: confirmed ? (saved?.name ?? "") : "",
     address_1: saved?.address_1 || property?.address_1 || "",
     address_2: saved?.address_2 ?? "",
     city: saved?.city || property?.city || "",
@@ -86,6 +88,17 @@ export function CompanyStep() {
     description: saved?.description ?? "",
   }));
   const [logo, setLogo] = useState<File | null>(null);
+  // Preview of the chosen logo: a local object URL, released when it changes or the page closes.
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  useEffect(() => {
+    if (!logoPreview) return;
+    return () => URL.revokeObjectURL(logoPreview);
+  }, [logoPreview]);
+  const chooseLogo = (file: File | null) => {
+    setLogo(file);
+    setLogoPreview(file ? URL.createObjectURL(file) : null);
+  };
+  const shownLogo = logo ? logoPreview : (saved?.logo ?? null);
   const [errors, setErrors] = useState<Partial<Record<Field, string>>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -103,7 +116,7 @@ export function CompanyStep() {
 
   function onLogoChange(file: File | undefined) {
     setErrors((current) => ({ ...current, logo: undefined }));
-    if (!file) return setLogo(null);
+    if (!file) return chooseLogo(null);
     if (!/^image\/(jpeg|png|gif|webp)$/.test(file.type)) {
       setErrors((current) => ({ ...current, logo: "Logo must be a JPG, PNG, GIF or WEBP image." }));
       return;
@@ -112,7 +125,7 @@ export function CompanyStep() {
       setErrors((current) => ({ ...current, logo: "Logo must be smaller than 5 MB." }));
       return;
     }
-    setLogo(file);
+    chooseLogo(file);
   }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -176,6 +189,16 @@ export function CompanyStep() {
     }
   }
 
+  // Company names are unique: checked when the host leaves the field (and again on save).
+  const [nameChecked, setNameChecked] = useState<string | null>(null);
+  async function checkName() {
+    const name = values.name.trim().replace(/\s+/g, " ");
+    if (name.length < 2 || name === nameChecked) return;
+    setNameChecked(name);
+    const result = await signupApi.checkCompanyName(name, token);
+    if (!result.ok && result.errors.name) setErrors((current) => ({ ...current, name: result.errors.name }));
+  }
+
   const text = (key: (typeof FIELDS)[number], label: string, extra: Partial<Parameters<typeof TextField>[0]> = {}) => (
     <TextField
       id={`company-${key}`}
@@ -201,8 +224,8 @@ export function CompanyStep() {
 
       {(state?.completed_steps ?? 0) < stepNumber("company") && (saved || property) ? (
         <Notice tone="info" className="mb-5" title="We've filled this in for you">
-          The name and address come from your property, and the contact details from your account. Check them and
-          change anything that&apos;s different for your company.
+          The address comes from your property, and the contact details from your account. Add your company or host
+          name, and change anything that&apos;s different for your company.
         </Notice>
       ) : null}
 
@@ -211,6 +234,7 @@ export function CompanyStep() {
           required: true,
           autoComplete: "organization",
           placeholder: "e.g. Green Casa Stays",
+          onBlur: () => void checkName(),
         })}
         {text("address_1", "Address", {
           required: true,
@@ -267,12 +291,25 @@ export function CompanyStep() {
         <div>
           <p className="mb-2 text-small font-semibold text-heading">Logo (optional)</p>
           <div className="flex flex-wrap items-center gap-3">
+            <span className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-input border border-border bg-surface-muted">
+              {shownLogo ? (
+                // eslint-disable-next-line @next/next/no-img-element -- local preview (blob:) or the back end's file
+                <img src={shownLogo} alt={logo ? "Preview of the chosen logo" : "Your saved logo"} className="size-full object-contain" />
+              ) : (
+                <Icon name="image" size={22} className="text-muted" />
+              )}
+            </span>
             <Button variant="outline" onClick={() => logoInput.current?.click()}>
               <Icon name="upload" size={16} /> {logo ? "Change logo" : saved?.logo ? "Replace logo" : "Upload logo"}
             </Button>
             <span className="text-small text-body">
               {logo ? logo.name : saved?.logo ? "A logo is saved." : "JPG, PNG, GIF or WEBP, up to 5 MB"}
             </span>
+            {logo ? (
+              <Button variant="text" size="sm" onClick={() => chooseLogo(null)}>
+                Remove
+              </Button>
+            ) : null}
             <input
               ref={logoInput}
               id="company-logo"

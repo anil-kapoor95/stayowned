@@ -4,7 +4,7 @@ import { useId, useRef, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { Notice } from "@/components/ui/Card";
 import { Dialog } from "@/components/ui/Dialog";
-import { TextField } from "@/components/ui/Field";
+import { SelectField, TextField } from "@/components/ui/Field";
 import { SwitchCard } from "@/components/ui/Switch";
 import { cn } from "@/lib/utils";
 import {
@@ -18,8 +18,17 @@ import {
 /** Result of saving: field errors use the API field names (public_key, secret_key, label). */
 export type GatewaySaveResult = { ok: true } | { ok: false; message: string; errors: Record<string, string> };
 
+/** Time zones for Authorize.Net (the browser's list; the server checks it against PHP's). */
+function timeZones(): string[] {
+  try {
+    return (Intl as unknown as { supportedValuesOf?: (key: string) => string[] }).supportedValuesOf?.("timeZone") ?? ["UTC"];
+  } catch {
+    return ["UTC"];
+  }
+}
+
 /**
- * "Connect Razorpay" style popup, shared by every gateway. Save checks the fields, then
+ * "Connect Razorpay" style popup, shared by every payment method (cash: only on / off and a label). Save checks the fields, then
  * `onSave` sends them to the back office; server errors are shown on the form.
  */
 export function PaymentGatewayDialog({
@@ -42,7 +51,7 @@ export function PaymentGatewayDialog({
       open={open}
       onClose={onClose}
       size="form"
-      title={`Connect ${config.name}`}
+      title={config.offline ? `Accept ${config.name.toLowerCase()} payments` : `Connect ${config.name}`}
       titleClassName="font-display text-[1.5rem] font-extrabold leading-tight tracking-[-0.02em] text-heading opsz-14"
       description={config.description}
       showCloseButton={false}
@@ -63,7 +72,7 @@ export function PaymentGatewayDialog({
             Close
           </Button>
           <Button type="submit" form={formId} disabled={submitting} aria-busy={submitting}>
-            {submitting ? "Saving…" : "Save and connect"}
+            {submitting ? "Saving…" : config.offline ? "Save" : "Save and connect"}
           </Button>
         </>
       }
@@ -156,9 +165,11 @@ function GatewayForm({
 
   return (
     <form id={id} ref={formRef} noValidate onSubmit={submit} className="grid gap-4" autoComplete="off">
-      <Notice tone="warning" className="py-3">
-        This payment method requires your website to be secured with an SSL certificate.
-      </Notice>
+      {config.offline ? null : (
+        <Notice tone="warning" className="py-3">
+          This payment method requires your website to be secured with an SSL certificate.
+        </Notice>
+      )}
 
       {formError ? (
         <Notice tone="error" role="alert" className="py-3">
@@ -195,6 +206,7 @@ function GatewayForm({
             onChange={(event) => update({ label: event.target.value })}
           />
 
+          {config.offline ? null : (
           <SwitchCard
             title="Test mode"
             description="Try a payment without real money. Turn it off before you go live."
@@ -204,16 +216,48 @@ function GatewayForm({
               setErrors({});
             }}
           />
+          )}
 
           {config.keys.map((key) => {
             const shown = Boolean(revealed[key.id]);
-            const keepsSaved = key.secret && settings.savedSecret[mode];
+            const keepsSaved = key.secret && Boolean(settings.savedSecret[mode][key.id]);
+            if (key.timezone) {
+              const zones = timeZones();
+              const value = settings.keys[key.id] ?? "";
+              return (
+                <SelectField
+                  key={key.id}
+                  id={fieldId(key.id)}
+                  label={key.label}
+                  hint={key.hint}
+                  error={errors[key.id]}
+                  value={value}
+                  onChange={(event) => setKey(key.id, event.target.value)}
+                >
+                  <option value="">{key.placeholder[mode]}</option>
+                  {value && !zones.includes(value) ? <option value={value}>{value}</option> : null}
+                  {zones.map((zone) => (
+                    <option key={zone} value={zone}>
+                      {zone.replace(/_/g, " ")}
+                    </option>
+                  ))}
+                </SelectField>
+              );
+            }
             return (
               <TextField
                 key={key.id}
                 id={fieldId(key.id)}
                 compact
-                label={key.label}
+                label={
+                  key.optional ? (
+                    <>
+                      {key.label} <span className="font-normal text-body">(optional)</span>
+                    </>
+                  ) : (
+                    key.label
+                  )
+                }
                 hint={key.hint}
                 error={errors[key.id]}
                 placeholder={keepsSaved ? "Saved — leave empty to keep it" : key.placeholder[mode]}
@@ -242,15 +286,6 @@ function GatewayForm({
             );
           })}
 
-          {config.extraToggles.map((toggle) => (
-            <SwitchCard
-              key={toggle.id}
-              title={toggle.title}
-              description={toggle.description}
-              checked={Boolean(settings.toggles[toggle.id])}
-              onChange={(value) => update({ toggles: { ...settings.toggles, [toggle.id]: value } })}
-            />
-          ))}
         </div>
       ) : null}
     </form>

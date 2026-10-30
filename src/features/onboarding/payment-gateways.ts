@@ -1,33 +1,30 @@
-import type { PaymentMethodRequest, PaymentMethodState } from "@/lib/api/signup";
+import type { PaymentMethodId, PaymentMethodRequest, PaymentMethodState } from "@/lib/api/signup";
 
 /**
- * Payment gateway connection forms. Saved to the back office with pjActionSavePaymentMethod
- * (nothing is sent to Razorpay or Stripe from here), into the same fields as the back office's
- * Properties > Payments. Secret keys are write-only: the server only reports whether one is saved.
- * Razorpay copy comes from the "Connect Razorpay" design; Stripe uses the same layout with
- * the fields of the existing Stripe settings form (public key, secret key, authorization).
+ * Payment method forms (PayPal, Authorize.Net, Razorpay, Stripe, Cash). Saved with pjActionSavePaymentMethod
+ * into the same fields as the back office's Properties > Payments, per property; nothing is sent to the
+ * providers from here. Which methods exist, which are free / Pro and whether one is locked come from the
+ * back office; this file only has the wording of each form. Secret fields are write-only.
  */
 
-export type GatewayId = "razorpay" | "stripe";
+export type GatewayId = PaymentMethodId;
 
 export interface GatewayKeyField {
+  /** Field name of the API (pjJabbApi::$paymentGateways). */
   id: string;
   label: string;
-  /** Placeholders for live and test mode. */
   placeholder: { live: string; test: string };
   hint: string;
-  /** Secret keys are masked and get a Show/Hide toggle. */
+  /** Masked, with a Show/Hide toggle; never sent back by the server. */
   secret: boolean;
-  /** Expected key prefixes, e.g. rzp_live_ / rzp_test_. Omitted for secrets the provider doesn't prefix. */
+  /** Not needed to switch the method on. */
+  optional?: boolean;
+  /** Select from the time zones instead of typing. */
+  timezone?: boolean;
+  /** Expected prefixes in live / test mode, e.g. rzp_live_ / rzp_test_. */
   prefix?: { live: string; test: string };
   /** Other accepted prefixes, e.g. Stripe restricted keys (rk_live_ / rk_test_). */
   altPrefixes?: { live: string[]; test: string[] };
-}
-
-export interface GatewayExtraToggle {
-  id: string;
-  title: string;
-  description?: string;
 }
 
 export interface GatewayConfig {
@@ -37,85 +34,164 @@ export interface GatewayConfig {
   initial: string;
   /** Background class of the logo tile (a colour token). */
   tileClass: string;
+  /** One line on the list. */
+  summary: string;
   description: string;
   allowHint: string;
   labelPlaceholder: string;
+  /** Cash: no keys, no test mode. */
+  offline?: boolean;
   keys: GatewayKeyField[];
-  extraToggles: GatewayExtraToggle[];
 }
 
 export interface GatewaySettings {
   enabled: boolean;
   label: string;
   testMode: boolean;
+  /** Values typed for the current mode (secrets start empty). */
   keys: Record<string, string>;
-  toggles: Record<string, boolean>;
-  /** A secret key is already saved on the server for live / test mode (empty field = keep it). */
-  savedSecret: { live: boolean; test: boolean };
-  /** Public keys saved on the server for live / test mode (shown again when test mode is switched). */
-  savedPublic: { live: string; test: string };
+  /** Saved values of the non-secret fields per mode (shown again when test mode is switched). */
+  savedValues: { live: Record<string, string>; test: Record<string, string> };
+  /** Secret fields with a saved value per mode (empty field = keep it). */
+  savedSecret: { live: Record<string, boolean>; test: Record<string, boolean> };
 }
 
 export const GATEWAY_CONFIGS: Record<GatewayId, GatewayConfig> = {
+  paypal: {
+    id: "paypal",
+    name: "PayPal",
+    initial: "P",
+    tileClass: "bg-brand-paypal",
+    summary: "PayPal balance and cards, trusted by travellers worldwide",
+    description: "Get paid with PayPal and cards. Money goes straight to your PayPal account.",
+    allowHint: "Guests can pay with PayPal at checkout.",
+    labelPlaceholder: "Pay with PayPal or card",
+    keys: [
+      {
+        id: "client_id",
+        label: "PayPal client ID",
+        placeholder: { live: "Your live client ID", test: "Your sandbox client ID" },
+        hint: "PayPal Developer Dashboard > Apps & Credentials (Live or Sandbox) > your app.",
+        secret: false,
+      },
+      {
+        id: "secret",
+        label: "PayPal secret",
+        placeholder: { live: "Your live secret", test: "Your sandbox secret" },
+        hint: "Shown next to the client ID. Keep it private.",
+        secret: true,
+      },
+    ],
+  },
+  authorize: {
+    id: "authorize",
+    name: "Authorize.Net",
+    initial: "A",
+    tileClass: "bg-secondary",
+    summary: "Cards with a US merchant account",
+    description: "Take card payments through your Authorize.Net merchant account.",
+    allowHint: "Guests can pay by card with Authorize.Net at checkout.",
+    labelPlaceholder: "Pay by card",
+    keys: [
+      {
+        id: "login_id",
+        label: "API login ID",
+        placeholder: { live: "Your API login ID", test: "Your sandbox API login ID" },
+        hint: "Merchant Interface > Account > Settings > API Credentials & Keys.",
+        secret: false,
+      },
+      {
+        id: "transaction_key",
+        label: "Transaction key",
+        placeholder: { live: "16 characters", test: "16 characters" },
+        hint: "Created on the same page. Keep it private.",
+        secret: true,
+      },
+      {
+        id: "signature_key",
+        label: "Signature key",
+        placeholder: { live: "128 characters", test: "128 characters" },
+        hint: "Used to check payment notifications. Keep it private.",
+        secret: true,
+        optional: true,
+      },
+      {
+        id: "tz",
+        label: "Time zone",
+        placeholder: { live: "Choose a time zone", test: "Choose a time zone" },
+        hint: "The time zone of your Authorize.Net account.",
+        secret: false,
+        timezone: true,
+      },
+    ],
+  },
   razorpay: {
     id: "razorpay",
     name: "Razorpay",
     initial: "R",
-    tileClass: "bg-secondary",
+    tileClass: "bg-brand-cashfree",
+    summary: "UPI, cards, net banking and wallets in India",
     description: "Get paid by UPI, cards and net banking. Money goes straight to your account.",
     allowHint: "Guests can pay with Razorpay at checkout.",
     labelPlaceholder: "Pay with UPI, card or net banking",
     keys: [
       {
-        id: "keyId",
+        id: "key_id",
         label: "Razorpay key ID",
         placeholder: { live: "rzp_live_xxxxxxxxxxxxxx", test: "rzp_test_xxxxxxxxxxxxxx" },
-        hint: "This is your Razorpay key ID, found in Dashboard > Account & Settings > API Keys.",
+        hint: "Dashboard > Account & Settings > API Keys.",
         secret: false,
         prefix: { live: "rzp_live_", test: "rzp_test_" },
       },
       {
-        id: "keySecret",
+        id: "key_secret",
         label: "Razorpay key secret",
         placeholder: { live: "Your key secret", test: "Your key secret" },
-        hint: "This is your Razorpay key secret. Keep it private.",
+        hint: "Shown once when the key is created. Keep it private.",
         secret: true,
       },
     ],
-    extraToggles: [],
   },
   stripe: {
     id: "stripe",
     name: "Stripe",
     initial: "S",
     tileClass: "bg-brand-stripe",
-    // Adapted from the existing gateway list copy ("International cards, Apple Pay & 135+ currencies").
+    summary: "International cards, Apple Pay & 135+ currencies",
     description: "Get paid by international cards and Apple Pay in 135+ currencies. Money goes straight to your account.",
     allowHint: "Guests can pay with Stripe at checkout.",
-    // The old Stripe form's default label was "Stripe".
     labelPlaceholder: "Stripe",
     keys: [
       {
-        id: "publicKey",
+        id: "public_key",
         label: "Stripe public key",
         placeholder: { live: "pk_live_xxxxxxxxxxxxxx", test: "pk_test_xxxxxxxxxxxxxx" },
-        hint: "This is your Stripe public key.",
+        hint: "Developers > API keys.",
         secret: false,
         prefix: { live: "pk_live_", test: "pk_test_" },
       },
       {
-        id: "secretKey",
+        id: "secret_key",
         label: "Stripe secret key",
         placeholder: { live: "sk_live_xxxxxxxxxxxxxx", test: "sk_test_xxxxxxxxxxxxxx" },
-        hint: "This is your Stripe secret key. Keep it private.",
+        hint: "On the same page. Keep it private.",
         secret: true,
         prefix: { live: "sk_live_", test: "sk_test_" },
         altPrefixes: { live: ["rk_live_"], test: ["rk_test_"] },
       },
     ],
-    // "Enable authorization" (old Stripe form) is not offered: the back office has no setting for it,
-    // so the switch would not be saved.
-    extraToggles: [],
+  },
+  cash: {
+    id: "cash",
+    name: "Cash",
+    initial: "C",
+    tileClass: "bg-success",
+    summary: "Guests pay you on arrival",
+    description: "Guests book online and pay you in cash when they arrive.",
+    allowHint: "Guests can choose to pay in cash at the property.",
+    labelPlaceholder: "Pay in cash on arrival",
+    offline: true,
+    keys: [],
   },
 };
 
@@ -125,126 +201,83 @@ export function emptyGatewaySettings(config: GatewayConfig): GatewaySettings {
     label: "",
     testMode: false,
     keys: Object.fromEntries(config.keys.map((key) => [key.id, ""])),
-    toggles: Object.fromEntries(config.extraToggles.map((toggle) => [toggle.id, false])),
-    savedSecret: { live: false, test: false },
-    savedPublic: { live: "", test: "" },
+    savedValues: { live: {}, test: {} },
+    savedSecret: { live: {}, test: {} },
   };
 }
 
-/**
- * Switches the form between live and test mode: the public key field shows the key saved for the
- * new mode (unless the host typed a different one) and the typed secret is cleared.
- */
+/** Values shown for a mode: the saved non-secret values, empty secrets. */
+function keysForMode(config: GatewayConfig, settings: GatewaySettings, mode: "live" | "test") {
+  return Object.fromEntries(config.keys.map((key) => [key.id, key.secret ? "" : settings.savedValues[mode][key.id] ?? ""]));
+}
+
+/** Switches the form between live and test mode: the fields show what is saved for the new mode. */
 export function switchTestMode(config: GatewayConfig, settings: GatewaySettings, testMode: boolean): GatewaySettings {
-  const { publicKey, secretKey } = keyFields(config);
-  const from = settings.testMode ? "test" : "live";
-  const to = testMode ? "test" : "live";
-  const typed = (settings.keys[publicKey.id] ?? "").trim();
-  const keepTyped = typed !== "" && typed !== settings.savedPublic[from] && typed.startsWith(publicKey.prefix?.[to] ?? "");
-  return {
-    ...settings,
-    testMode,
-    keys: {
-      ...settings.keys,
-      [publicKey.id]: keepTyped ? typed : settings.savedPublic[to],
-      [secretKey.id]: "",
-    },
-  };
+  return { ...settings, testMode, keys: keysForMode(config, settings, testMode ? "test" : "live") };
 }
 
-function keyFields(config: GatewayConfig) {
-  const publicKey = config.keys.find((key) => !key.secret);
-  const secretKey = config.keys.find((key) => key.secret);
-  if (!publicKey || !secretKey) throw new Error(`${config.name}: a public and a secret key field are required`);
-  return { publicKey, secretKey };
-}
-
-/** Form values -> API fields. "Enable authorization" is not sent: the back office has no setting for it yet. */
+/** Form values -> API fields. */
 export function toPaymentMethodRequest(config: GatewayConfig, settings: GatewaySettings): PaymentMethodRequest {
-  const { publicKey, secretKey } = keyFields(config);
-  if (!settings.enabled) {
-    // Switched off: the settings are hidden, so only the switch is saved. Empty values
-    // leave the saved label and keys as they are (they are back when switched on again).
-    return {
-      payment_method: config.id,
-      is_active: 0,
-      is_test_mode: settings.testMode ? 1 : 0,
-      label: "",
-      public_key: "",
-      secret_key: "",
-    };
-  }
+  // Switched off: only the switch is saved; the saved label and keys stay for when it is switched on again.
+  const keys = settings.enabled ? Object.fromEntries(Object.entries(settings.keys).map(([k, v]) => [k, v.trim()])) : {};
   return {
     payment_method: config.id,
-    is_active: 1,
-    is_test_mode: settings.testMode ? 1 : 0,
-    label: settings.label.trim(),
-    public_key: (settings.keys[publicKey.id] ?? "").trim(),
-    secret_key: (settings.keys[secretKey.id] ?? "").trim(),
+    is_active: settings.enabled ? 1 : 0,
+    is_test_mode: settings.testMode && !config.offline ? 1 : 0,
+    label: settings.enabled ? settings.label.trim() : "",
+    keys: JSON.stringify(keys),
   };
 }
 
-/** Saved state from the API -> form values. The secret field is left empty (it is never sent back). */
-export function fromPaymentMethodState(
-  config: GatewayConfig,
-  current: GatewaySettings,
-  state: PaymentMethodState,
-): GatewaySettings {
-  const { publicKey, secretKey } = keyFields(config);
-  return {
+/** Saved state from the API -> form values. */
+export function fromPaymentMethodState(config: GatewayConfig, current: GatewaySettings, state: PaymentMethodState): GatewaySettings {
+  const next: GatewaySettings = {
     ...current,
     enabled: state.is_active,
     testMode: state.is_test_mode,
     label: state.label,
-    keys: {
-      ...current.keys,
-      [publicKey.id]: state.is_test_mode ? state.test_public_key : state.public_key,
-      [secretKey.id]: "",
-    },
-    savedSecret: { live: state.has_secret_key, test: state.has_test_secret_key },
-    savedPublic: { live: state.public_key, test: state.test_public_key },
+    savedValues: state.values,
+    savedSecret: state.saved_secrets,
   };
+  return { ...next, keys: keysForMode(config, next, state.is_test_mode ? "test" : "live") };
 }
 
-/** True when anything was saved for the gateway (otherwise the form starts blank, switched on). */
+/** True when anything was saved for the method (otherwise the form starts blank, switched on). */
 export function hasSavedPaymentMethod(state: PaymentMethodState): boolean {
+  const any = (values: Record<string, string | boolean>) => Object.values(values).some(Boolean);
   return Boolean(
     state.is_active ||
-      state.public_key ||
-      state.test_public_key ||
-      state.has_secret_key ||
-      state.has_test_secret_key ||
-      state.label,
+      state.label ||
+      any(state.values.live) ||
+      any(state.values.test) ||
+      any(state.saved_secrets.live) ||
+      any(state.saved_secrets.test),
   );
 }
 
-/** API error field -> form field id. */
+/** API error field -> form field id (the API uses the same field names). */
 export function formFieldForServerError(config: GatewayConfig, field: string): string | null {
-  const { publicKey, secretKey } = keyFields(config);
-  if (field === "public_key") return publicKey.id;
-  if (field === "secret_key") return secretKey.id;
   if (field === "label") return "label";
-  return null;
+  return config.keys.some((key) => key.id === field) ? field : null;
 }
 
-/** Field errors keyed by key id. Keys are only required while payments are allowed. */
+/** Field errors keyed by field id. Fields are only required while the method is switched on. */
 export function validateGatewaySettings(config: GatewayConfig, settings: GatewaySettings): Record<string, string> {
   const errors: Record<string, string> = {};
   if (!settings.enabled) return errors;
   const mode = settings.testMode ? "test" : "live";
   for (const key of config.keys) {
     const value = (settings.keys[key.id] ?? "").trim();
-    if (!value && key.secret && settings.savedSecret[mode]) {
-      continue; // keep the secret key already saved for this mode
-    }
     if (!value) {
-      errors[key.id] = `Enter your ${key.label}.`;
+      // a saved secret is kept; optional fields may stay empty
+      if (key.optional || (key.secret && settings.savedSecret[mode][key.id])) continue;
+      errors[key.id] = key.timezone ? "Choose the time zone of your account." : `Enter your ${key.label}.`;
     } else if (key.prefix && ![key.prefix[mode], ...(key.altPrefixes?.[mode] ?? [])].some((p) => value.startsWith(p))) {
       const other = mode === "live" ? "test" : "live";
       errors[key.id] = [key.prefix[other], ...(key.altPrefixes?.[other] ?? [])].some((p) => value.startsWith(p))
         ? `Test mode is ${settings.testMode ? "on" : "off"}, so use your ${mode} key (${key.prefix[mode]}…).`
         : `This doesn't look like a ${config.name} key. It should start with ${key.prefix[mode]}.`;
-    } else if (/\s/.test(value)) {
+    } else if (!key.timezone && /\s/.test(value)) {
       errors[key.id] = "Remove the spaces from the key.";
     }
   }

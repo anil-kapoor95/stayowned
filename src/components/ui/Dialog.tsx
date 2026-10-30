@@ -31,7 +31,7 @@ export function Dialog({
   description?: ReactNode;
   children: ReactNode;
   className?: string;
-  size?: "md" | "form" | "lg" | "xl";
+  size?: "md" | "form" | "lg" | "xl" | "2xl";
   icon?: ReactNode;
   footer?: ReactNode;
   showCloseButton?: boolean;
@@ -51,7 +51,7 @@ export function Dialog({
     };
   }, [open]);
 
-  const widths = { md: "max-w-lg", form: "max-w-[40rem]", lg: "max-w-3xl", xl: "max-w-5xl" } as const;
+  const widths = { md: "max-w-lg", form: "max-w-[40rem]", lg: "max-w-3xl", xl: "max-w-5xl", "2xl": "max-w-7xl" } as const;
 
   return (
     <dialog

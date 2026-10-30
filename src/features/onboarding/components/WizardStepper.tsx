@@ -5,7 +5,7 @@ import { Fragment } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { cn } from "@/lib/utils";
 import { useSignupSession } from "../signup-session";
-import { ACCOUNT_EDIT_HREF, WIZARD_STEPS, type WizardStepId } from "../steps";
+import { WIZARD_STEPS, type WizardStepId } from "../steps";
 
 /**
  * Pill-shaped progress indicator: "① Account — ② Company — ③ Property …".
@@ -21,9 +21,9 @@ export function WizardStepper({ current }: { current: WizardStepId }) {
         {WIZARD_STEPS.map((step, index) => {
           const isCurrent = step.id === current;
           const done = !isCurrent && step.number <= completed;
-          const reachable = step.number <= completed + 1;
-          // Step 1 done: its link opens the account form again (/setup/account itself resumes at the next step).
-          const href = step.id === "account" && completed >= 1 ? ACCOUNT_EDIT_HREF : step.href;
+          // Step 1 (account) is done once: after that it is shown as done, without a link.
+          const reachable = step.number <= completed + 1 && !(step.id === "account" && completed >= 1);
+          const href = step.href;
           const content = (
             <>
               <span
@@ -55,7 +55,10 @@ export function WizardStepper({ current }: { current: WizardStepId }) {
                     {content}
                   </Link>
                 ) : (
-                  <span className="flex cursor-not-allowed items-center gap-2 text-small" aria-disabled="true">
+                  <span
+                    className={cn("flex items-center gap-2 text-small", !done && "cursor-not-allowed")}
+                    aria-disabled="true"
+                  >
                     {content}
                   </span>
                 )}

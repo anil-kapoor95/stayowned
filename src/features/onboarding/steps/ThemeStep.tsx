@@ -8,10 +8,11 @@ import { Icon } from "@/components/ui/Icon";
 import { bookingLinkHost } from "@/config/site";
 import { AMENITIES } from "@/data/amenities";
 import { signupApi, type ApiTheme } from "@/lib/api/signup";
-import { cn, formatPrice, pluralize } from "@/lib/utils";
+import { DEFAULT_PRICE_FORMAT, formatAdminPrice } from "@/lib/price-format";
+import { cn, pluralize } from "@/lib/utils";
 import { useDraft } from "../draft-store";
 import { setSignupFlash, updateSignupState, useSignupSession } from "../signup-session";
-import { ThemeMiniPage, ThemePreviewDialog, ThemeSwatches, type ThemePreviewData } from "../components/ThemePreview";
+import { ThemeMiniPage, ThemeSwatches, type ThemePreviewData } from "../components/ThemePreview";
 import { UpgradePlansDialog } from "../components/UpgradePlansDialog";
 import { hrefForNextStep, LIVE_HREF } from "../steps";
 
@@ -19,8 +20,8 @@ import { hrefForNextStep, LIVE_HREF } from "../steps";
  * Step 6 (last) — theme (pjActionGetThemes + pjActionSignupTheme). The colour
  * palettes come from the back office (Options > Theme colours); choosing one and
  * publishing completes the registration. The first theme is free; the others need a
- * plan with themes. Every theme can be previewed on the host's own page (ThemePreviewDialog);
- * a paid one leads to the plans (UpgradePlansDialog).
+ * plan with themes: Unlock shows the plans (UpgradePlansDialog). The full preview window
+ * (ThemePreviewDialog) is switched off for now.
  */
 export function ThemeStep() {
   const router = useRouter();
@@ -38,8 +39,6 @@ export function ThemeStep() {
 
   const name = state?.property?.name || "your property";
   const draft = useDraft();
-  // Theme shown in the preview window (index in `themes`), or null.
-  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
 
   // The host's own page for the previews.
   const previewData = useMemo<ThemePreviewData>(() => {
@@ -58,7 +57,8 @@ export function ThemeStep() {
     return {
       name: p?.name || draft.property.name || "Your property",
       place: [p?.city, p?.state].filter(Boolean).join(", "),
-      price: price ? formatPrice(price, currency) : null,
+      // As the back office shows prices (System options > Price format)
+      price: price ? formatAdminPrice(price, state?.currency_sign || currency, state?.price_format ?? DEFAULT_PRICE_FORMAT) : null,
       facts: [
         bedrooms ? pluralize(bedrooms, "bedroom") : "",
         bathrooms ? pluralize(bathrooms, "bath") : "",
@@ -130,8 +130,7 @@ export function ThemeStep() {
 
   function choose(theme: ApiTheme) {
     if (theme.locked) {
-      // Show the paid theme on the host's page first; the plans are one click away there.
-      setPreviewIndex(themes?.indexOf(theme) ?? null);
+      setUpgrade({ theme });
       return;
     }
     setSelected(theme.id);
@@ -154,7 +153,7 @@ export function ThemeStep() {
 
       {themes && !allowed ? (
         <Notice tone="info" className="mt-6" title="The first theme is free">
-          The other themes come with the Pro and Business plans. Preview any of them before you decide.{" "}
+          The other themes come with the Pro and Business plans.{" "}
           <button
             type="button"
             onClick={() => setUpgrade({ theme: null })}
@@ -185,37 +184,18 @@ export function ThemeStep() {
         </ul>
       ) : (
         <div role="group" aria-label="Themes" className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {themes.map((theme, index) => (
+          {themes.map((theme) => (
             <ThemeCard
               key={theme.id}
               theme={theme}
               data={previewData}
               selected={selected === theme.id}
               onSelect={() => choose(theme)}
-              onPreview={() => setPreviewIndex(index)}
             />
           ))}
         </div>
       )}
 
-      {themes ? (
-        <ThemePreviewDialog
-          themes={themes}
-          index={previewIndex}
-          data={previewData}
-          onIndexChange={setPreviewIndex}
-          onClose={() => setPreviewIndex(null)}
-          onUse={(theme) => {
-            setPreviewIndex(null);
-            setSelected(theme.id);
-            setError(undefined);
-          }}
-          onUnlock={(theme) => {
-            setPreviewIndex(null);
-            setUpgrade({ theme });
-          }}
-        />
-      ) : null}
 
       <UpgradePlansDialog
         open={upgrade !== null}
@@ -241,13 +221,11 @@ function ThemeCard({
   data,
   selected,
   onSelect,
-  onPreview,
 }: {
   theme: ApiTheme;
   data: ThemePreviewData;
   selected: boolean;
   onSelect: () => void;
-  onPreview: () => void;
 }) {
   return (
     <div
@@ -256,14 +234,7 @@ function ThemeCard({
         selected ? "border-primary" : "border-transparent hover:border-border",
       )}
     >
-      <button
-        type="button"
-        onClick={onPreview}
-        className="block rounded-input text-left focus-visible:outline-none focus-visible:focus-ring"
-        aria-label={`Preview ${theme.name}`}
-      >
-        <ThemeMiniPage theme={theme} data={data} />
-      </button>
+      <ThemeMiniPage theme={theme} data={data} />
       <ThemeSwatches theme={theme} />
       <div className="flex items-center justify-between gap-2">
         <p className="flex min-w-0 items-center gap-1.5 font-heading text-base font-extrabold text-heading">
@@ -277,7 +248,8 @@ function ThemeCard({
           ) : null}
         </p>
         <div className="flex shrink-0 gap-1.5">
-          <Button size="sm" variant="outline" onClick={onPreview}>
+          {/* Full preview: switched off for now. */}
+          <Button size="sm" variant="outline" disabled title="Preview is coming soon">
             Preview
           </Button>
           <Button

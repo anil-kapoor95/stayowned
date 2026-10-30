@@ -93,7 +93,9 @@ export function ThemeMiniPage({ theme, data }: { theme: ApiTheme; data: ThemePre
           </p>
         </div>
         <div className="rounded-sm bg-(--t-bg) p-1.5 shadow-[0_1px_0_rgb(0_0_0/0.05)]">
-          <p className="truncate font-heading text-[0.8125rem] font-extrabold text-(--t-price)">{data.price ?? "Your price"}</p>
+          <p className="break-words font-heading text-[0.75rem] font-extrabold leading-tight text-(--t-price)">
+            {data.price ?? "Your price"}
+          </p>
           <p className="text-[0.59375rem] opacity-70">per night</p>
           <p className="mt-1.5 rounded-pill bg-(--t-accent) py-1 text-center text-[0.625rem] font-bold text-white">Book now</p>
         </div>

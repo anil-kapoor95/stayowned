@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useEffectEvent, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Tag } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Notice } from "@/components/ui/Card";
@@ -11,6 +11,7 @@ import { Icon } from "@/components/ui/Icon";
 import { signupApi, type ContentField, type SignupFaq } from "@/lib/api/signup";
 import { cn, countWords } from "@/lib/utils";
 import { TONES } from "../copy-templates";
+import { UpgradePlansDialog } from "../components/UpgradePlansDialog";
 import { updateDraft, useDraft } from "../draft-store";
 import { updateSignupState, useSignupSession } from "../signup-session";
 import { hrefForNextStep } from "../steps";
@@ -54,16 +55,18 @@ const isEmpty = (texts: Texts, field: Field) =>
  * Step 5 — page texts (pjActionSignupDescription): page headline, description and the
  * questions guests ask. The AI (pjActionSignupGenerateDescription, Options > AI settings)
  * always writes in English, in the tone chosen with the chips (Warm by default):
- * - first visit with nothing saved: the page is written straight away in the Warm tone;
- * - choosing another tone writes the page again in that tone (each tone's version is
- *   kept, so going back to a tone shows its texts, edits included);
- * - "Rewrite" on a card writes only that card again.
+ * - nothing is written on arrival: the host clicks "Write with AI" / "Rewrite" on a card;
+ * - the tone only sets the style of the next card written (the texts shown stay as they are);
+ * - "Rewrite" on a card writes only that card (headline, description or questions).
  * Nothing is saved until the host continues.
  */
 export function DescriptionStep() {
   const router = useRouter();
   const { token, state } = useSignupSession();
   const aiAvailable = Boolean(state?.ai_available);
+  // AI writing is set up but comes with the paid plans: its buttons are shown disabled.
+  const aiLocked = !aiAvailable && Boolean(state?.ai_locked);
+  const [plansOpen, setPlansOpen] = useState(false);
   const importedDescription = useDraft().imported?.description?.trim() ?? "";
 
   const [tone, setTone] = useState<Tone>(state?.tone ?? DEFAULT_TONE);
@@ -155,29 +158,12 @@ export function DescriptionStep() {
     setOpenFaq(null);
   }
 
-  // First visit with nothing saved: write the page in the default (Warm) tone.
-  const started = useRef(false);
-  const writeFirstVersion = useEffectEvent(() => {
-    if (aiAvailable && aiLeft > 0 && Object.keys(versions).length === 0) void generate("all", tone);
-  });
-  useEffect(() => {
-    if (started.current) return;
-    started.current = true;
-    writeFirstVersion();
-  }, []);
-
+  // The tone is the style of the next "Rewrite": the texts shown stay as they are.
   function chooseTone(next: Tone) {
     const previous = tone;
     setTone(next);
-    setEditing({ headline: false, description: false, faqs: false });
     setAiMessage(undefined);
-    if (versions[next]) return;
-    if (aiAvailable && aiLeft > 0) {
-      void generate("all", next, previous);
-    } else {
-      // No AI: the texts stay as they are, only the tone changes.
-      setVersions((current) => ({ ...current, [next]: current[previous] ?? EMPTY }));
-    }
+    setVersions((current) => ({ ...current, [next]: current[previous] ?? EMPTY }));
   }
 
   function edit(field: Field, value: Partial<Texts>) {
@@ -237,10 +223,11 @@ export function DescriptionStep() {
   const canRewrite = aiAvailable && aiLeft > 0 && !busy;
   const cardProps = (field: Field) => ({
     source: sources[field],
+    empty: isEmpty(texts, field),
     editing: editing[field],
     busy: busy === field || busy === "all",
     canRewrite,
-    onRewrite: aiAvailable ? () => generate(field, tone) : undefined,
+    onRewrite: aiAvailable ? () => generate(field, tone) : aiLocked ? () => undefined : undefined,
     onEdit: () => setEditing((current) => ({ ...current, [field]: !current[field] })),
     error: errors[field],
   });
@@ -264,7 +251,11 @@ export function DescriptionStep() {
           onChange={chooseTone}
           disabled={Boolean(busy) || saving}
         />
-        {aiAvailable ? (
+        {aiLocked ? (
+          <Tag>
+            <Icon name="lock" size={12} className="mr-1" /> AI writing · paid plans
+          </Tag>
+        ) : aiAvailable ? (
           <Tag>
             <Icon name="sparkles" size={13} className="mr-1 text-primary" />
             {aiLeft} AI {aiLeft === 1 ? "rewrite" : "rewrites"} left
@@ -273,9 +264,38 @@ export function DescriptionStep() {
       </div>
       <p className="mt-2 text-caption text-muted">
         {aiAvailable
-          ? "Choosing a tone writes the headline, description and questions again in that tone, in English."
-          : "AI writing isn't available right now — write your texts below."}
+          ? "Choose a tone, then click Write with AI or Rewrite on a card: only that card is written, in English."
+          : aiLocked
+            ? "AI writing comes with the paid plans. Write your texts below for now."
+            : "AI writing isn't available right now — write your texts below."}
+        {aiLocked ? (
+          <>
+            {" "}
+            <button
+              type="button"
+              onClick={() => setPlansOpen(true)}
+              className="font-semibold text-heading underline underline-offset-2 hover:text-link-hover focus-visible:outline-none focus-visible:focus-ring"
+            >
+              See plans
+            </button>
+          </>
+        ) : null}
       </p>
+
+      <UpgradePlansDialog
+        open={plansOpen}
+        token={token}
+        title="Unlock AI writing"
+        intro="AI writes your headline, description and guest questions, in the tone you choose. It comes with these plans."
+        themeName={null}
+        onClose={() => setPlansOpen(false)}
+        onKeepFree={() => setPlansOpen(false)}
+        keepFreeLabel="Write it myself"
+        onRefresh={() => {
+          setPlansOpen(false);
+          window.location.reload();
+        }}
+      />
 
       <p role="status" aria-live="polite" className={cn("text-small font-medium text-heading", status && "mt-4")}>
         {status ? (
@@ -404,6 +424,7 @@ export function DescriptionStep() {
 function CopyCard({
   title,
   source,
+  empty,
   editing,
   busy,
   canRewrite,
@@ -415,6 +436,8 @@ function CopyCard({
 }: {
   title: string;
   source: Source;
+  /** Nothing written yet: the AI button says "Write with AI". */
+  empty: boolean;
   editing: boolean;
   busy: boolean;
   canRewrite: boolean;
@@ -439,7 +462,8 @@ function CopyCard({
         <div className="flex gap-2">
           {onRewrite ? (
             <Button size="sm" variant="outline" onClick={onRewrite} disabled={!canRewrite}>
-              <Icon name="refresh" size={14} className={cn(busy && "animate-spin")} /> Rewrite
+              <Icon name={empty ? "sparkles" : "refresh"} size={14} className={cn(busy && "animate-spin")} />{" "}
+              {empty ? "Write with AI" : "Rewrite"}
               <span className="sr-only"> {name}</span>
             </Button>
           ) : null}

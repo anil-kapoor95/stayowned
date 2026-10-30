@@ -27,6 +27,7 @@ export function PricingPlanCard({
   badge,
   cta,
   note,
+  compact = false,
   as: Tag = "li",
 }: {
   name: string;
@@ -41,6 +42,8 @@ export function PricingPlanCard({
   cta: ReactNode;
   /** Small line under the price, e.g. "14-day free trial". */
   note?: string;
+  /** Smaller padding and no raised popular card (plans side by side in a window). */
+  compact?: boolean;
   as?: "li" | "div";
 }) {
   const dark = style === "dark";
@@ -49,14 +52,16 @@ export function PricingPlanCard({
   return (
     <Tag
       className={cn(
-        "relative flex flex-col rounded-plan border-2 px-[38px] py-11",
+        "relative flex snap-start flex-col rounded-plan border-2",
+        compact ? "px-6 py-8" : "px-[38px] py-11",
         style === "plain" && "border-border bg-surface",
-        popular && "border-brand bg-surface shadow-plan-popular max-md:mt-3 md:-mt-3",
+        popular && "border-brand bg-surface shadow-plan-popular",
+        popular && !compact && "max-md:mt-3 md:-mt-3",
         dark && "border-secondary bg-secondary",
       )}
     >
       {badge ? (
-        <span className="absolute -top-3.5 left-9 rounded-pill bg-primary px-4 py-[4.6px] font-heading text-caption font-extrabold uppercase leading-[19.2px] tracking-[0.06em] text-on-primary drop-shadow-popular-badge">
+        <span className={cn("absolute -top-3.5", compact ? "left-6" : "left-9", "rounded-pill bg-primary px-4 py-[4.6px] font-heading text-caption font-extrabold uppercase leading-[19.2px] tracking-[0.06em] text-on-primary drop-shadow-popular-badge")}>
           {badge}
         </span>
       ) : null}
@@ -89,7 +94,7 @@ export function PricingPlanCard({
             className={cn(
               "flex items-center gap-3 font-heading text-[0.9375rem] font-semibold leading-6",
               dark ? "text-plan-text-on-dark" : "text-plan-text",
-              style === "plain" && "py-[12.6px]",
+              style === "plain" && !compact && "py-[12.6px]",
             )}
           >
             <PlanTickIcon onDark={dark} />
