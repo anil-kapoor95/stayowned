@@ -21,7 +21,8 @@ import { StepCard, StepFooter } from "../components/WizardShell";
 const DEFAULT_TONE: Tone = "warm";
 const MAX_HEADLINE = 120;
 const MAX_DESCRIPTION = 5000;
-const MAX_FAQS = 8;
+/** Questions per property when the back office doesn't say (Options > Sign-up settings). */
+const DEFAULT_MAX_FAQS = 8;
 
 type Field = ContentField;
 /** Where a card's text comes from: the AI, the host's own edit, or what was saved before. */
@@ -368,7 +369,7 @@ export function DescriptionStep() {
 
         <CopyCard title="Questions guests ask" {...cardProps("faqs")}>
           {editing.faqs ? (
-            <FaqEditor faqs={texts.faqs} onChange={(faqs) => edit("faqs", { faqs })} error={errors.faqs} />
+            <FaqEditor faqs={texts.faqs} onChange={(faqs) => edit("faqs", { faqs })} error={errors.faqs} max={state?.limits?.max_faqs ?? DEFAULT_MAX_FAQS} />
           ) : texts.faqs.length > 0 ? (
             <ul className="divide-y divide-divider">
               {texts.faqs.map((faq, index) => {
@@ -501,10 +502,13 @@ function FaqEditor({
   faqs,
   onChange,
   error,
+  max,
 }: {
   faqs: SignupFaq[];
   onChange: (faqs: SignupFaq[]) => void;
   error?: string;
+  /** Most questions a property may have. */
+  max: number;
 }) {
   const update = (index: number, patch: Partial<SignupFaq>) =>
     onChange(faqs.map((faq, i) => (i === index ? { ...faq, ...patch } : faq)));
@@ -543,7 +547,7 @@ function FaqEditor({
           {error}
         </p>
       ) : null}
-      {faqs.length < MAX_FAQS ? (
+      {faqs.length < max ? (
         <Button
           size="sm"
           variant="outline"

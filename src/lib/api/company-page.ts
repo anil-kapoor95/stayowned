@@ -34,6 +34,8 @@ export interface CompanyPageData {
   places: string[];
   price_format: PriceFormat;
   theme: PropertyPageData["theme"];
+  /** Show "Designed by PHPJabbers" (set per plan in the back office). */
+  branding?: boolean;
   properties: CompanyPageProperty[];
 }
 

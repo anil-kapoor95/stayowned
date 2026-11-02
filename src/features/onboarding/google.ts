@@ -7,8 +7,8 @@ import { signupApi, type GoogleProfile } from "@/lib/api/signup";
  * "Continue with Google" with Google Identity Services (OAuth token client, popup):
  * the browser gets an access token for this site's client id, the back end checks it
  * with Google (pjActionSignupGoogle) and logs the host in or starts a new sign-up.
- * Client id: NEXT_PUBLIC_GOOGLE_CLIENT_ID in .env.local, or app/config/google.php in the back end
- * (the back end's value wins when both are set).
+ * Client id: set by the administrator in the back office (System options > API Keys > Google sign-in),
+ * read from pjActionGetAuthConfig.
  */
 
 interface TokenResponse {
@@ -38,17 +38,15 @@ const SCRIPT_SRC = "https://accounts.google.com/gsi/client";
 let clientIdRequest: Promise<string> | null = null;
 let scriptRequest: Promise<void> | null = null;
 
-/** Client id set in Next.js (.env.local: NEXT_PUBLIC_GOOGLE_CLIENT_ID). */
-export const ENV_GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim() || "";
-
 /**
- * Google OAuth client id: NEXT_PUBLIC_GOOGLE_CLIENT_ID, otherwise the back end's app/config/google.php
- * ("" when neither is set, or the back end can't be reached).
+ * Google OAuth client id from the back office ("" when it is not set, or the back end can't be reached;
+ * a failed request is tried again next time).
  */
 export function loadGoogleClientId(): Promise<string> {
-  clientIdRequest ??= ENV_GOOGLE_CLIENT_ID
-    ? Promise.resolve(ENV_GOOGLE_CLIENT_ID)
-    : signupApi.authConfig().then((result) => (result.ok ? result.data.google_client_id : ""));
+  clientIdRequest ??= signupApi.authConfig().then((result) => {
+    if (!result.ok) clientIdRequest = null;
+    return result.ok ? result.data.google_client_id : "";
+  });
   return clientIdRequest;
 }
 

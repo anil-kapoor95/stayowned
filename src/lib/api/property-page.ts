@@ -37,6 +37,8 @@ export interface PropertyPageData {
     name: string;
     colors: { brand: string; accent: string; text: string; background: string; price: string; page_background: string };
   } | null;
+  /** Show "Designed by PHPJabbers" (set per plan in the back office). */
+  branding?: boolean;
   /** Taken dates (bookings and imported calendars), "to" is the check-out day. */
   booked: { from: string; to: string }[];
   /** Booking calendar of the back office (preview.php?cid=…). */

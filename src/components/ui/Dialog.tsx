@@ -64,11 +64,13 @@ export function Dialog({
       }}
       className={cn(
         "m-auto w-[calc(100%-2rem)] rounded-card bg-surface p-0 text-body shadow-popover backdrop:bg-overlay",
+        // With a footer (Close / Save): header and footer stay in view, only the content scrolls
+        Boolean(footer) && "max-h-[calc(100dvh-2rem)] overflow-hidden open:flex open:flex-col",
         widths[size],
         className,
       )}
     >
-      <div className="flex items-start justify-between gap-4 border-b border-divider px-5 py-4 sm:px-6">
+      <div className="flex shrink-0 items-start justify-between gap-4 border-b border-divider px-5 py-4 sm:px-6">
         <div className={icon ? "flex items-center gap-3.5" : undefined}>
           {icon}
           <div>
@@ -89,9 +91,9 @@ export function Dialog({
           </button>
         ) : null}
       </div>
-      <div className="px-5 py-5 sm:px-6">{children}</div>
+      <div className={cn("px-5 py-5 sm:px-6", Boolean(footer) && "min-h-0 flex-1 overflow-y-auto overscroll-contain")}>{children}</div>
       {footer ? (
-        <div className="flex flex-wrap items-center justify-end gap-3 border-t border-divider bg-background px-5 py-4 sm:px-6">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-divider bg-background px-5 py-4 sm:px-6">
           {footer}
         </div>
       ) : null}

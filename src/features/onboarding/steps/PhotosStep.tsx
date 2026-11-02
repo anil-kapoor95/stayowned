@@ -14,7 +14,8 @@ import { updateSignupState, useSignupSession } from "../signup-session";
 import { hrefForNextStep } from "../steps";
 import { StepCard, StepFooter } from "../components/WizardShell";
 
-const MAX_PHOTOS = 20; // pjJabbApi::MAX_PHOTOS
+/** Photos per property when the back office doesn't say (Options > Sign-up settings). */
+const DEFAULT_MAX_PHOTOS = 20;
 const RECOMMENDED = 5;
 const MAX_BYTES = 10 * 1024 * 1024;
 const ACCEPT = ["image/jpeg", "image/png", "image/gif"]; // formats the back end stores
@@ -35,6 +36,7 @@ const SHOT_LIST = [
 export function PhotosStep() {
   const router = useRouter();
   const { token, state } = useSignupSession();
+  const MAX_PHOTOS = state?.limits?.max_photos ?? DEFAULT_MAX_PHOTOS;
   const photos = state?.photos ?? [];
   const propertyName = state?.property?.name || "your property";
   const inputRef = useRef<HTMLInputElement>(null);

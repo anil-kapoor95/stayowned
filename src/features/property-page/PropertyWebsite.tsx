@@ -111,10 +111,12 @@ export function PropertyWebsite({ page }: { page: PropertyPageData }) {
 
   return (
     <div style={themeStyle(page.theme)} className="flex flex-1 flex-col bg-(--p-page) text-(--p-text)">
-      <p className="bg-(--p-brand) py-2 text-center text-[0.75rem] font-medium text-white/80">
-        <span aria-hidden="true" className="mr-1.5 inline-block size-1.5 rounded-full bg-(--p-accent) align-middle" />
-        Designed by <strong className="text-white">PHPJabbers</strong>
-      </p>
+      {page.branding !== false ? (
+        <p className="bg-(--p-brand) py-2 text-center text-[0.75rem] font-medium text-white/80">
+          <span aria-hidden="true" className="mr-1.5 inline-block size-1.5 rounded-full bg-(--p-accent) align-middle" />
+          Designed by <strong className="text-white">PHPJabbers</strong>
+        </p>
+      ) : null}
 
       <header className="sticky top-0 z-30 border-b border-(--p-line) bg-(--p-card)/95 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
@@ -340,7 +342,9 @@ export function PropertyWebsite({ page }: { page: PropertyPageData }) {
       <footer className="mt-auto border-t border-(--p-line)">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-6 text-[0.8125rem] text-(--p-muted) sm:px-6">
           <p>© {page.name}</p>
-          <p>© {new Date().getFullYear()} All Rights Reserved | Website by PHPJabbers</p>
+          <p>
+            © {new Date().getFullYear()} All Rights Reserved{page.branding !== false ? " | Website by PHPJabbers" : ""}
+          </p>
         </div>
       </footer>
 

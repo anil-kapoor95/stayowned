@@ -17,7 +17,7 @@ import { downloadAirbnbPhoto } from "@/lib/server/airbnb-import";
  */
 
 const MAX_BODY_BYTES = 16 * 1024;
-const MAX_PHOTOS = 20; // pjJabbApi::MAX_PHOTOS
+const DEFAULT_MAX_PHOTOS = 20; // Options > Sign-up settings, when the back end doesn't say
 const CONCURRENCY = 4;
 const TIMEOUT_MS = 45_000;
 const RATE_LIMIT = { max: 5, windowMs: 10 * 60_000 };
@@ -88,8 +88,9 @@ export async function POST(request: Request) {
   if (!status.ok) {
     return status.code === 401 ? respond(401, status.message) : respond(503, "We can't import photos right now. Please try again.");
   }
-  const room = MAX_PHOTOS - (status.data.photos?.length ?? 0);
-  if (room <= 0) return respond(422, "Validation failed", { errors: { photos: `You already have ${MAX_PHOTOS} photos.` } });
+  const maxPhotos = status.data.limits?.max_photos ?? DEFAULT_MAX_PHOTOS;
+  const room = maxPhotos - (status.data.photos?.length ?? 0);
+  if (room <= 0) return respond(422, "Validation failed", { errors: { photos: `You already have ${maxPhotos} photos.` } });
   const wanted = photos.slice(0, room);
 
   const signal = AbortSignal.timeout(TIMEOUT_MS);

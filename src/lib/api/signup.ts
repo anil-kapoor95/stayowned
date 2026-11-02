@@ -102,6 +102,8 @@ export interface SignupState {
   price_format?: { price_format: number; currency_place: "front" | "back" };
   /** Company options > General of the account. */
   settings?: GeneralSettings;
+  /** Options > Sign-up settings (back office). */
+  limits?: { max_photos: number; max_faqs: number; max_amenities: number; max_amenity_length: number };
   ai_generations_left: number;
   login_url?: string;
   /* Extra keys some steps add */
