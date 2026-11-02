@@ -11,11 +11,25 @@ import type { Property } from "@/types/property";
 type Variant = "details" | "photos" | "content" | "phone";
 
 /** The "LIVE PREVIEW (WHAT GUESTS SEE)" card from the wizard's right-hand panel. */
-export function LivePreviewCard({ property, variant }: { property: Property; variant: Variant }) {
+export function LivePreviewCard({
+  property,
+  variant,
+  formatAmount,
+}: {
+  property: Property;
+  variant: Variant;
+  /** Writes an amount like the account does (its currency, price format and symbol place). */
+  formatAmount?: (amount: number) => string;
+}) {
   const cover = property.images[0];
   const typeLabel = `Entire private ${PROPERTY_TYPE_LABELS[property.type].toLowerCase()}`;
   const place = [property.location.locality, property.location.region].filter(Boolean).join(", ");
-  const price = property.price.amount > 0 ? formatPrice(property.price.amount, property.price.currency) : "—";
+  const price =
+    property.price.amount > 0
+      ? formatAmount
+        ? formatAmount(property.price.amount)
+        : formatPrice(property.price.amount, property.price.currency)
+      : "—";
   const rating = property.rating;
 
   return (

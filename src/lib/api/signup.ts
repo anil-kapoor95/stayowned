@@ -21,6 +21,8 @@ export interface SignupCompany {
   country_id: string | null;
   description: string | null;
   logo: string | null;
+  /** Link of the company page on the website: /stays/<slug>. */
+  slug?: string;
 }
 
 export interface SignupProperty {
@@ -98,6 +100,8 @@ export interface SignupState {
   currency_sign?: string;
   /** System options > Price format and currency position. */
   price_format?: { price_format: number; currency_place: "front" | "back" };
+  /** Company options > General of the account. */
+  settings?: GeneralSettings;
   ai_generations_left: number;
   login_url?: string;
   /* Extra keys some steps add */
@@ -119,6 +123,23 @@ export interface Country {
   id: string;
   alpha_2: string;
   name: string | null;
+  /** Suggested currency of a new account in this country (null when not offered). */
+  currency?: string | null;
+  /** Main time zone of the country (Region/City), null when unknown. */
+  timezone?: string | null;
+  /** All time zones of the country. */
+  timezones?: string[];
+}
+
+/** Company options > General of the account (saved by the back end as the company's own options). */
+export interface GeneralSettings {
+  date_format: string;
+  time_format: string;
+  timezone: string;
+  week_start: string;
+  currency: string;
+  price_format: string;
+  currency_place: "front" | "back";
 }
 
 export interface ApiTheme {

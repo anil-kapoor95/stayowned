@@ -84,9 +84,6 @@ export function PropertyStep() {
     format: PriceFormat;
   } | null>(null);
   const [currencyChoice, setCurrencyChoice] = useState<string | null>(null);
-  const currency = currencyChoice || saved?.currency || state?.currency || property.currency;
-  const currencySign = currencyData?.currencies.find((item) => item.code === currency)?.sign ?? currency;
-  const priceFormat = currencyData?.format ?? state?.price_format ?? DEFAULT_PRICE_FORMAT;
   useEffect(() => {
     let active = true;
     void signupApi.currencies(token).then((result) => {
@@ -117,6 +114,14 @@ export function PropertyStep() {
   // The account's default country is suggested until an import says the country is not known.
   const [suggestCountry, setSuggestCountry] = useState(true);
   const countryId = address.country_id || (suggestCountry ? defaultCountryId(countries) : "");
+
+  // Currency: the host's choice, the saved one, or (first time) the currency of the property's country
+  const countryCurrency = countries?.find((item) => item.id === countryId)?.currency ?? null;
+  const suggestedCurrency =
+    !saved && countryCurrency && currencyData?.currencies.some((item) => item.code === countryCurrency) ? countryCurrency : null;
+  const currency = currencyChoice || saved?.currency || suggestedCurrency || state?.currency || property.currency;
+  const currencySign = currencyData?.currencies.find((item) => item.code === currency)?.sign ?? currency;
+  const priceFormat = currencyData?.format ?? state?.price_format ?? DEFAULT_PRICE_FORMAT;
 
   const update = (patch: Partial<DraftProperty>) =>
     updateDraft((current) => {
@@ -546,7 +551,7 @@ export function PropertyStep() {
             }}
             error={errors.currency}
             disabled={!currencyData}
-            hint="Used for all your prices."
+            hint={!currencyChoice && suggestedCurrency === currency ? "Suggested for the property's country. Used for all your prices." : "Used for all your prices."}
           >
             {!currencyData ? <option value={currency}>{currency}</option> : null}
             {currencyData?.currencies.map((item) => (

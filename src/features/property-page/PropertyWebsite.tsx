@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import Link from "next/link";
+import { useMemo, useState, type ReactNode } from "react";
 import { Dialog } from "@/components/ui/Dialog";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { SafeImage } from "@/components/ui/SafeImage";
@@ -8,35 +9,9 @@ import { AMENITIES, AMENITY_FEATURE_NAMES, amenityKey } from "@/data/amenities";
 import type { PropertyPageData } from "@/lib/api/property-page";
 import { formatAdminPrice } from "@/lib/price-format";
 import { cn } from "@/lib/utils";
+import { themeStyle } from "./theme";
 
 /* ------------------------------------------------------------------ theme */
-
-/** Colours of the theme the host chose (step 6); the Figma colours when there is none. */
-const DEFAULT_COLORS = {
-  brand: "#1d2250",
-  accent: "#ee5a24",
-  text: "#1d2250",
-  background: "#ffffff",
-  price: "#1d2250",
-  page_background: "#fdfcf8",
-};
-
-function themeStyle(page: PropertyPageData): CSSProperties {
-  const c = page.theme?.colors ?? DEFAULT_COLORS;
-  return {
-    "--p-brand": c.brand,
-    "--p-accent": c.accent,
-    "--p-text": c.text,
-    "--p-card": c.background,
-    "--p-price": c.price,
-    "--p-page": c.page_background,
-    "--p-soft": `color-mix(in srgb, ${c.accent} 9%, ${c.background})`,
-    "--p-line": `color-mix(in srgb, ${c.text} 12%, transparent)`,
-    "--p-muted": `color-mix(in srgb, ${c.text} 62%, ${c.page_background})`,
-    // global heading colour (h1–h3) follows the theme too
-    "--color-heading": c.text,
-  } as CSSProperties;
-}
 
 const card = "rounded-[1rem] border border-(--p-line) bg-(--p-card)";
 const accentButton =
@@ -135,7 +110,7 @@ export function PropertyWebsite({ page }: { page: PropertyPageData }) {
   const [photoIndex, setPhotoIndex] = useState<number | null>(null);
 
   return (
-    <div style={themeStyle(page)} className="flex flex-1 flex-col bg-(--p-page) text-(--p-text)">
+    <div style={themeStyle(page.theme)} className="flex flex-1 flex-col bg-(--p-page) text-(--p-text)">
       <p className="bg-(--p-brand) py-2 text-center text-[0.75rem] font-medium text-white/80">
         <span aria-hidden="true" className="mr-1.5 inline-block size-1.5 rounded-full bg-(--p-accent) align-middle" />
         Designed by <strong className="text-white">PHPJabbers</strong>
@@ -179,7 +154,23 @@ export function PropertyWebsite({ page }: { page: PropertyPageData }) {
             </h1>
             <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.875rem]">
               {page.headline ? <span className="font-semibold">{page.name}</span> : null}
-              {page.host.name ? <span className="text-(--p-muted)">Hosted by {page.host.name}</span> : null}
+              {page.host.name ? (
+                <span className="text-(--p-muted)">
+                  Hosted by{" "}
+                  {page.host.slug ? (
+                    <Link href={`/stays/${page.host.slug}`} className="font-semibold text-(--p-text) underline-offset-2 hover:text-(--p-accent) hover:underline">
+                      {page.host.name}
+                    </Link>
+                  ) : (
+                    page.host.name
+                  )}
+                </span>
+              ) : null}
+              {page.host.slug && (page.host.stays ?? 0) > 1 ? (
+                <Link href={`/stays/${page.host.slug}`} className="inline-flex items-center gap-1 font-semibold text-(--p-accent) hover:underline">
+                  See all {page.host.stays} stays <Icon name="arrowRight" size={14} />
+                </Link>
+              ) : null}
               <span className="font-semibold text-[#15803d]">Book direct with the host</span>
             </p>
             <ul className="mt-5 flex flex-wrap gap-2.5 border-b border-(--p-line) pb-7">

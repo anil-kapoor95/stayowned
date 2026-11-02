@@ -7,6 +7,7 @@ import { Icon } from "@/components/ui/Icon";
 import { getTheme } from "@/data/themes";
 import { draftToProperty } from "../draft-to-property";
 import { useDraft } from "../draft-store";
+import { useAccountPrice } from "../use-account-price";
 import { LivePreviewCard } from "./LivePreviewCard";
 
 type Variant = "details" | "photos" | "content";
@@ -15,6 +16,7 @@ type Variant = "details" | "photos" | "content";
 export function PreviewPanel({ variant, intro, footer }: { variant: Variant; intro?: ReactNode; footer?: ReactNode }) {
   const draft = useDraft();
   const property = draftToProperty(draft);
+  const formatAmount = useAccountPrice(property.price.currency);
   return (
     <div className="panel-gradient rounded-panel p-5 text-on-dark shadow-panel sm:p-8">
       {intro}
@@ -22,7 +24,7 @@ export function PreviewPanel({ variant, intro, footer }: { variant: Variant; int
         <span className="size-2 rounded-pill bg-accent" aria-hidden="true" />
         Live preview (what guests see)
       </p>
-      <LivePreviewCard property={property} variant={variant} />
+      <LivePreviewCard property={property} variant={variant} formatAmount={formatAmount} />
       {footer}
     </div>
   );

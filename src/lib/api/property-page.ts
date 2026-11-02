@@ -22,7 +22,16 @@ export interface PropertyPageData {
   currency_sign: string;
   price_format: PriceFormat;
   photos: { url: string; thumb_url: string }[];
-  host: { name: string; logo: string | null; phone: string; email: string };
+  host: {
+    name: string;
+    logo: string | null;
+    phone: string;
+    email: string;
+    /** Company page with all the host's properties: /stays/<slug>. */
+    slug?: string;
+    /** Number of the host's properties on the website. */
+    stays?: number;
+  };
   theme: {
     id: string;
     name: string;

@@ -53,6 +53,15 @@ function isWebsite(value: string) {
   }
 }
 
+/** Time zone of this device (Region/City), "" when unknown. */
+function deviceTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone ?? "";
+  } catch {
+    return "";
+  }
+}
+
 export function CompanyStep() {
   const router = useRouter();
   const { token, state } = useSignupSession();
@@ -159,6 +168,9 @@ export function CompanyStep() {
         form.append(key, values.phone.trim() ? toInternational(getPhoneCountry(phoneCountry), values.phone) : "");
       else form.append(key, values[key].trim());
     }
+    // The account's settings (Company options > General) are saved by the back end; the time zone of this
+    // device is used when it is in the company's country.
+    form.append("device_timezone", deviceTimezone());
     if (logo) form.append("logo", logo, logo.name);
 
     setSubmitting(true);

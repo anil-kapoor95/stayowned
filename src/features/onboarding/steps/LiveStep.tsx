@@ -14,6 +14,7 @@ import { draftToProperty } from "../draft-to-property";
 import { useDraft } from "../draft-store";
 import { useSignupSession } from "../signup-session";
 import { LivePreviewCard } from "../components/LivePreviewCard";
+import { useAccountPrice } from "../use-account-price";
 import { PaymentGatewayDialog, type GatewaySaveResult } from "../components/PaymentGatewayDialog";
 import { UpgradePlansDialog } from "../components/UpgradePlansDialog";
 import {
@@ -42,10 +43,13 @@ export function LiveStep() {
   // Companies added in the back office may not have a property yet.
   const hasProperty = Boolean(state?.property);
   const property = draftToProperty(draft);
+  const formatAmount = useAccountPrice(property.price.currency);
   const slug = property.slug || "your-page";
   const link = `${bookingLinkHost}/${slug}`;
   // The host's website: /property/<property name> (the server finds the property by this link).
   const websiteHref = state?.property?.name ? `/property/${slugify(state.property.name)}` : null;
+  // The company page: all the host's properties (/stays/<company name>)
+  const companyHref = state?.company?.slug ? `/stays/${state.company.slug}` : null;
   const [copied, setCopied] = useState(false);
   const [demoMessage, setDemoMessage] = useState<string | null>(null);
   const [openGateway, setOpenGateway] = useState<GatewayId | null>(null);
@@ -197,6 +201,11 @@ export function LiveStep() {
               <Button variant="onDark" size="lg" href={websiteHref ?? "/setup/preview"}>
                 <Icon name="externalLink" size={17} /> View my page
               </Button>
+              {companyHref && hasProperty ? (
+                <Button variant="onDark" size="lg" href={companyHref}>
+                  <Icon name="home" size={17} /> Explore my stays
+                </Button>
+              ) : null}
               {loginUrl ? (
                 <a
                   href={loginUrl}
@@ -211,7 +220,7 @@ export function LiveStep() {
 
           <div className="mx-auto w-full max-w-80 rounded-device border-10 border-secondary-active bg-secondary-active shadow-panel">
             <div className="overflow-hidden rounded-device-screen">
-              <LivePreviewCard property={property} variant="phone" />
+              <LivePreviewCard property={property} variant="phone" formatAmount={formatAmount} />
             </div>
           </div>
         </section>
