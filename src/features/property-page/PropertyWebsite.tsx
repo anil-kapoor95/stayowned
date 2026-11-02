@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState, type ReactNode } from "react";
 import { Dialog } from "@/components/ui/Dialog";
 import { Icon, type IconName } from "@/components/ui/Icon";
@@ -69,8 +70,25 @@ export function PropertyWebsite({ page }: { page: PropertyPageData }) {
   // Dates chosen on the calendar or in the booking card
   const [checkIn, setCheckIn] = useState<string | null>(null);
   const [checkOut, setCheckOut] = useState<string | null>(null);
-  const [guests, setGuests] = useState(1);
+  // Adults / children as the property's booking form has them (Booking options > Booking form)
+  const [adults, setAdults] = useState(page.guests.adults.show ? 1 : 0);
+  const [children, setChildren] = useState(0);
+  const guests = adults + children;
+  const router = useRouter();
   const today = todayIso();
+
+  /** Book now: the booking page of this website; its first step asks for the dates (required there). */
+  const bookHref = () => {
+    const query = new URLSearchParams();
+    if (checkIn && checkOut) {
+      query.set("from", checkIn);
+      query.set("to", checkOut);
+    }
+    if (page.guests.adults.show) query.set("adults", String(adults));
+    if (page.guests.children.show && children > 0) query.set("children", String(children));
+    const qs = query.toString();
+    return `/property/${page.slug}/book${qs ? `?${qs}` : ""}`;
+  };
 
   /** Is this day taken? Per night: the check-out day of a booking is free again; per day: it is taken. */
   const taken = useMemo(() => {
@@ -137,7 +155,7 @@ export function PropertyWebsite({ page }: { page: PropertyPageData }) {
             <a href="#location" className="hover:text-(--p-accent)">Location</a>
             {page.faqs.length > 0 ? <a href="#faq" className="hover:text-(--p-accent)">FAQ</a> : null}
           </nav>
-          <a href="#book" className={cn(accentButton, "h-10 shrink-0 text-[0.875rem]")}>Book now</a>
+          <button type="button" onClick={() => router.push(bookHref())} className={cn(accentButton, "h-10 shrink-0 text-[0.875rem]")}>{page.labels.book_now}</button>
         </div>
       </header>
 
@@ -274,21 +292,19 @@ export function PropertyWebsite({ page }: { page: PropertyPageData }) {
 
               <div className="mt-5 overflow-hidden rounded-[0.875rem] border border-white/20">
                 <div className="grid grid-cols-2 divide-x divide-white/20">
-                  <DateField label="Check-in" value={checkIn} min={today} onChange={(v) => { setCheckIn(v || null); if (!v || (checkOut && v >= checkOut)) setCheckOut(null); }} />
-                  <DateField label="Check-out" value={checkOut} min={checkIn ? addDays(checkIn, perDay ? 0 : 1) : today} onChange={(v) => setCheckOut(v || null)} />
+                  <DateField label={page.labels.check_in} value={checkIn} min={today} onChange={(v) => { setCheckIn(v || null); if (!v || (checkOut && v >= checkOut)) setCheckOut(null); }} />
+                  <DateField label={page.labels.check_out} value={checkOut} min={checkIn ? addDays(checkIn, perDay ? 0 : 1) : today} onChange={(v) => setCheckOut(v || null)} />
                 </div>
-                <label className="block border-t border-white/20 px-4 py-3">
-                  <span className="block text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-white/60">Guests</span>
-                  <select
-                    value={guests}
-                    onChange={(event) => setGuests(Number(event.target.value))}
-                    className="mt-0.5 w-full bg-transparent font-semibold text-white focus:outline-none [&>option]:text-black"
-                  >
-                    {Array.from({ length: page.max_guests ?? 10 }, (_, i) => i + 1).map((n) => (
-                      <option key={n} value={n}>{n} {n === 1 ? "guest" : "guests"}</option>
-                    ))}
-                  </select>
-                </label>
+                {page.guests.adults.show || page.guests.children.show ? (
+                  <div className="grid grid-cols-2 divide-x divide-white/20 border-t border-white/20">
+                    {page.guests.adults.show ? (
+                      <GuestSelect label={page.labels.adults} value={adults} min={1} max={page.guests.adults.max} onChange={setAdults} />
+                    ) : null}
+                    {page.guests.children.show && page.guests.children.max > 0 ? (
+                      <GuestSelect label={page.labels.children} value={children} min={0} max={page.guests.children.max} onChange={setChildren} />
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
 
               {rangeFree !== null ? (
@@ -304,9 +320,9 @@ export function PropertyWebsite({ page }: { page: PropertyPageData }) {
                 </p>
               ) : null}
 
-              <a href={page.booking_url} target="_blank" rel="noopener noreferrer" className={cn(accentButton, "mt-4 h-12 w-full text-[1rem]")}>
-                Book now<span className="sr-only"> (opens the booking calendar in a new tab)</span>
-              </a>
+              <button type="button" onClick={() => router.push(bookHref())} disabled={rangeFree === false} className={cn(accentButton, "mt-4 h-12 w-full text-[1rem] disabled:cursor-not-allowed disabled:opacity-50")}>
+                {page.labels.book_now}
+              </button>
               {whatsapp ? (
                 <a
                   href={`https://wa.me/${whatsapp}?text=${whatsappText}`}
@@ -407,6 +423,23 @@ function Know({ icon, label, children }: { icon: IconName; label: string; childr
       </p>
       <p className="mt-1 font-heading text-[0.9375rem] font-bold">{children}</p>
     </li>
+  );
+}
+
+function GuestSelect({ label, value, min, max, onChange }: { label: string; value: number; min: number; max: number; onChange: (value: number) => void }) {
+  return (
+    <label className="block px-4 py-3">
+      <span className="block text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-white/60">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+        className="mt-0.5 w-full bg-transparent font-semibold text-white focus:outline-none [&>option]:text-black"
+      >
+        {Array.from({ length: Math.max(0, max - min + 1) }, (_, i) => min + i).map((n) => (
+          <option key={n} value={n}>{n}</option>
+        ))}
+      </select>
+    </label>
   );
 }
 

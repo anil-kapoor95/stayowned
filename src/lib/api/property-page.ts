@@ -43,6 +43,10 @@ export interface PropertyPageData {
   booked: { from: string; to: string }[];
   /** Booking calendar of the back office (preview.php?cid=…). */
   booking_url: string;
+  /** Booking card texts (back office > Languages). */
+  labels: { book_now: string; check_in: string; check_out: string; choose_dates: string; adults: string; children: string };
+  /** Adults / children of the property's booking form. */
+  guests: { adults: { show: boolean; max: number }; children: { show: boolean; max: number } };
 }
 
 /**
