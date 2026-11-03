@@ -36,6 +36,8 @@ export interface CompanyPageData {
   theme: PropertyPageData["theme"];
   /** Show "Designed by PHPJabbers" (set per plan in the back office). */
   branding?: boolean;
+  /** Text and link of the branding line (System Options > Visual & Branding). */
+  branding_line?: { text: string; footer: string; url: string };
   properties: CompanyPageProperty[];
 }
 

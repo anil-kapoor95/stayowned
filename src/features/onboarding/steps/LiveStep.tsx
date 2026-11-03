@@ -7,7 +7,7 @@ import { Badge, Tag } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Notice } from "@/components/ui/Card";
 import { Icon, WhatsAppMark } from "@/components/ui/Icon";
-import { bookingLinkHost } from "@/config/site";
+import { useBookingLink } from "@/lib/booking-link";
 import { signupApi, type PaymentMethodState } from "@/lib/api/signup";
 import { cn, slugify } from "@/lib/utils";
 import { draftToProperty } from "../draft-to-property";
@@ -37,6 +37,7 @@ const DEFAULT_METHODS: { id: GatewayId; tier: "free" | "pro" }[] = [
 ];
 
 export function LiveStep() {
+  const { base: bookingLinkHost, scheme: linkScheme } = useBookingLink();
   const draft = useDraft();
   const { state, token } = useSignupSession();
   const loginUrl = state?.login_url;
@@ -44,10 +45,11 @@ export function LiveStep() {
   const hasProperty = Boolean(state?.property);
   const property = draftToProperty(draft);
   const formatAmount = useAccountPrice(property.price.currency);
-  const slug = property.slug || "your-page";
+  // the server's stored link (unique: a second "Casanova" gets "casanova-2"), else the one made from the name
+  const slug = state?.property?.slug || property.slug || "your-page";
   const link = `${bookingLinkHost}/${slug}`;
-  // The host's website: /property/<property name> (the server finds the property by this link).
-  const websiteHref = state?.property?.name ? `/property/${slugify(state.property.name)}` : null;
+  // The host's website: /<link of the property> (short link)
+  const websiteHref = state?.property?.slug ? `/${state.property.slug}` : state?.property?.name ? `/${slugify(state.property.name)}` : null;
   // The company page: all the host's properties (/stays/<company name>)
   const companyHref = state?.company?.slug ? `/stays/${state.company.slug}` : null;
   const [copied, setCopied] = useState(false);
@@ -128,7 +130,7 @@ export function LiveStep() {
 
   async function copyLink() {
     try {
-      await navigator.clipboard.writeText(`https://${link}`);
+      await navigator.clipboard.writeText(`${linkScheme}${link}`);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2500);
     } catch {
@@ -136,7 +138,7 @@ export function LiveStep() {
     }
   }
 
-  const whatsappText = encodeURIComponent(`Book ${property.name} directly here: https://${link}`);
+  const whatsappText = encodeURIComponent(`Book ${property.name} directly here: ${linkScheme}${link}`);
 
   // Methods in the back office's order; free ones under "Set up payments", the others under "More gateways on Pro".
   const methodList = methods

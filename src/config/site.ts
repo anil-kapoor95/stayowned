@@ -17,12 +17,6 @@ export const siteConfig = {
   locale: "en_IN",
 } as const;
 
-/**
- * Host shown in booking-page links ("stayowned.com/green-casa"), as in the Figma.
- * Display text only — change it when the production domain is decided.
- */
-export const bookingLinkHost = "stayowned.com";
-
 export type NavItem = { label: string; href: string };
 
 export const mainNav: NavItem[] = [

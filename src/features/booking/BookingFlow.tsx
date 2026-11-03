@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { AvailabilityCalendar } from "./AvailabilityCalendar";
 import { SafeImage } from "@/components/ui/SafeImage";
@@ -28,18 +28,55 @@ const inputClass =
   "h-12 w-full rounded-[0.75rem] border border-(--p-line) bg-white px-3.5 text-[0.9375rem] text-[#1f2937] focus:border-(--p-accent) focus:outline-none focus:ring-2 focus:ring-(--p-accent)/25";
 const fieldLabel = "mb-1.5 block text-[0.75rem] font-bold uppercase tracking-[0.06em] text-(--p-muted)";
 
-const DAY = 86_400_000;
 const todayIso = () => {
   const now = new Date();
   return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())).toISOString().slice(0, 10);
 };
-const addDays = (value: string, days: number) => new Date(Date.parse(`${value}T00:00:00Z`) + days * DAY).toISOString().slice(0, 10);
 const fmtDay = (value: string) =>
   new Date(`${value}T00:00:00Z`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 const isDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
 
-/** Booking on the host's website: 4 steps, everything from the property's settings in the back office. */
-export function BookingFlow({ setup, initial }: { setup: BookingSetup; initial: Partial<BookingRequest> }) {
+type FlowProps = {
+  setup: BookingSetup;
+  initial: Partial<BookingRequest>;
+  /** Path of the property on this website: "/casanova", or "" when it is the home page of the host's own domain. */
+  basePath: string;
+};
+
+/**
+ * Booking on the host's website: 4 steps, everything from the property's settings in the back office.
+ *
+ * Next.js keeps visited pages alive (hidden) and shows them again on "Back" / "Book now". So a finished booking
+ * would come back on its last step ("Payment", button still busy). A new booking starts fresh:
+ *  - after a booking was sent, the flow is reset as soon as the page is left;
+ *  - other dates or guests from the property page (?from=&to=&adults=&children=) also start a new booking.
+ */
+export function BookingFlow(props: FlowProps) {
+  const [session, setSession] = useState(0);
+  const finished = useRef(false);
+  useEffect(
+    () => () => {
+      // the page is left (hidden): a finished booking is not shown again
+      if (finished.current) {
+        finished.current = false;
+        setSession((n) => n + 1);
+      }
+    },
+    [],
+  );
+  const initialKey = JSON.stringify(props.initial);
+  return (
+    <BookingSession
+      key={`${session}|${initialKey}`}
+      {...props}
+      onFinished={() => {
+        finished.current = true;
+      }}
+    />
+  );
+}
+
+function BookingSession({ setup, initial, basePath, onFinished }: FlowProps & { onFinished: () => void }) {
   const router = useRouter();
   const t = (key: string, tokens?: Record<string, string | number>) => label(setup.labels, key, tokens);
   const p = setup.property;
@@ -159,12 +196,13 @@ export function BookingFlow({ setup, initial }: { setup: BookingSetup; initial: 
       setFormError(result.message);
       return;
     }
-    const { payment, reference } = result.data;
+    const { payment, reference, key } = result.data;
+    onFinished();
     if (payment.online && payment.pay_url) {
       window.location.assign(payment.pay_url);
       return;
     }
-    router.push(`/property/${setup.slug}/book/confirmed?ref=${encodeURIComponent(reference)}`);
+    router.push(`${basePath}/book/confirmed?ref=${encodeURIComponent(reference)}&key=${encodeURIComponent(key)}`);
   }
 
   const termsText = setup.terms
@@ -216,7 +254,7 @@ export function BookingFlow({ setup, initial }: { setup: BookingSetup; initial: 
             )}
             <span className="truncate font-heading text-[1.0625rem] font-bold">{p.name}</span>
           </span>
-          <Link href={`/property/${setup.slug}`} className="inline-flex shrink-0 items-center gap-1 text-[0.875rem] font-semibold text-(--p-accent) hover:underline">
+          <Link href={basePath || "/"} className="inline-flex shrink-0 items-center gap-1 text-[0.875rem] font-semibold text-(--p-accent) hover:underline">
             <Icon name="chevronLeft" size={15} /> {t("book_back_to_property")}
           </Link>
         </div>
@@ -224,7 +262,8 @@ export function BookingFlow({ setup, initial }: { setup: BookingSetup; initial: 
 
       <div className="mx-auto grid w-full max-w-6xl gap-7 px-4 py-7 sm:px-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="min-w-0">
-          <ol className="mb-5 flex flex-wrap gap-2" aria-label="Steps">
+          {/* phones: one row, only the current step shows its name */}
+          <ol className="mb-5 flex gap-2 sm:flex-wrap">
             {steps.map((s, i) => {
               const done = i < stepIndex;
               const now = s === step;
@@ -236,7 +275,8 @@ export function BookingFlow({ setup, initial }: { setup: BookingSetup; initial: 
                     onClick={() => done && go(s)}
                     aria-current={now ? "step" : undefined}
                     className={cn(
-                      "flex items-center gap-2 rounded-full border px-2 py-1.5 pr-3.5 text-[0.8125rem] font-semibold",
+                      "flex items-center gap-2 rounded-full border p-1.5 text-[0.8125rem] font-semibold sm:px-2 sm:pr-3.5",
+                      now && "pr-3.5",
                       now && "border-(--p-accent) bg-(--p-accent) text-white",
                       done && "border-(--p-line) bg-(--p-card) text-[#15803d] hover:border-[#15803d]",
                       !now && !done && "border-(--p-line) bg-(--p-card) text-(--p-muted)",
@@ -245,7 +285,7 @@ export function BookingFlow({ setup, initial }: { setup: BookingSetup; initial: 
                     <span className={cn("grid size-6 place-items-center rounded-full text-[0.75rem]", now ? "bg-white/25" : done ? "bg-[#dcfce7]" : "bg-(--p-soft)")}>
                       {done ? <Icon name="check" size={13} /> : i + 1}
                     </span>
-                    {stepLabel[s]}
+                    <span className={cn(!now && "sr-only sm:not-sr-only")}>{stepLabel[s]}</span>
                   </button>
                 </li>
               );
@@ -257,31 +297,23 @@ export function BookingFlow({ setup, initial }: { setup: BookingSetup; initial: 
               <>
                 <StepTitle title={t("book_title_stay")} desc={t("book_desc_stay")} />
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <DateInput
+                  <DateField
                     id="book-date_from"
                     label={t("book_check_in")}
-                    value={request.date_from}
-                    min={todayIso()}
+                    value={request.date_from ? fmtDay(request.date_from) : ""}
+                    placeholder={t("book_cal_pick_in")}
                     error={Boolean(errors.dates) && !isDate(request.date_from)}
-                    onChange={(v) => {
-                      setErrors({});
-                      update({ date_from: v, date_to: request.date_to && request.date_to <= v && !perDay ? "" : request.date_to });
-                    }}
                   />
-                  <DateInput
+                  <DateField
                     id="book-date_to"
                     label={t("book_check_out")}
-                    value={request.date_to}
-                    min={request.date_from ? addDays(request.date_from, perDay ? 0 : 1) : todayIso()}
+                    value={request.date_to ? fmtDay(request.date_to) : ""}
+                    placeholder={request.date_from ? t("book_cal_pick_out") : t("book_check_out")}
                     error={Boolean(errors.dates) && !isDate(request.date_to)}
-                    onChange={(v) => {
-                      setErrors({});
-                      update({ date_to: v });
-                    }}
                   />
                 </div>
                 {errors.dates ? <FieldError>{errors.dates}</FieldError> : null}
-                <div className="mt-4">
+                <div className="mt-4" id="book-calendar">
                   <AvailabilityCalendar
                     taken={setup.booked}
                     perDay={perDay}
@@ -512,11 +544,17 @@ export function BookingFlow({ setup, initial }: { setup: BookingSetup; initial: 
 
       {/* phones: total and the next step at the bottom */}
       <div className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-between gap-3 border-t border-(--p-line) bg-(--p-card) px-4 py-3 lg:hidden">
-        <div>
-          <p className="font-heading text-[1.0625rem] font-extrabold">{priced ? money(priced.total) : "—"}</p>
-          <p className="text-[0.75rem] text-(--p-muted)">{priced ? `${nights} ${unitLabel(nights)}` : t("book_choose_dates")}</p>
+        <div className="min-w-0 flex-1">
+          {priced ? (
+            <>
+              <p className="font-heading text-[1.0625rem] font-extrabold">{money(priced.total)}</p>
+              <p className="text-[0.75rem] text-(--p-muted)">{`${nights} ${unitLabel(nights)}`}</p>
+            </>
+          ) : (
+            <p className="line-clamp-2 text-[0.8125rem] leading-snug text-(--p-muted)">{t("book_choose_dates")}</p>
+          )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex shrink-0 gap-2">
           {stepIndex > 0 ? <button type="button" onClick={back} className={cn(ghostButton, "h-11 px-3")} aria-label={t("book_back")}><Icon name="chevronLeft" size={18} /></button> : null}
           <button type="button" onClick={primary.action} disabled={primary.disabled} className={cn(accentButton, "h-11 px-4 text-[0.875rem]")}>
             {primary.text}
@@ -546,22 +584,30 @@ function FieldError({ children }: { children: ReactNode }) {
   );
 }
 
-function DateInput({ id, label, value, min, error, onChange }: { id: string; label: string; value: string; min: string; error: boolean; onChange: (v: string) => void }) {
+/**
+ * Check-in / check-out shown above the availability calendar. The dates are chosen on the calendar only
+ * (no browser date picker on top of it): a click takes the guest to the calendar.
+ */
+function DateField({ id, label, value, placeholder, error }: { id: string; label: string; value: string; placeholder: string; error: boolean }) {
   return (
     <div>
-      <label htmlFor={id} className={fieldLabel}>
+      <span id={`${id}-label`} className={fieldLabel}>
         {label} <span className="text-[#c2410c]">*</span>
-      </label>
-      <input
+      </span>
+      <button
         id={id}
-        type="date"
-        required
-        value={value}
-        min={min}
-        onChange={(e) => onChange(e.target.value)}
-        aria-invalid={error || undefined}
-        className={cn(inputClass, error && "border-[#c2410c] ring-2 ring-[#c2410c]/20")}
-      />
+        type="button"
+        aria-labelledby={`${id}-label ${id}`}
+        onClick={() => {
+          const calendar = document.getElementById("book-calendar");
+          calendar?.scrollIntoView({ behavior: "smooth", block: "center" });
+          calendar?.querySelector<HTMLButtonElement>("button[aria-label]:not(:disabled)")?.focus({ preventScroll: true });
+        }}
+        className={cn(inputClass, "flex items-center justify-between gap-2 text-left", !value && "text-[#9ca3af]", error && "border-[#c2410c] ring-2 ring-[#c2410c]/20")}
+      >
+        <span className="truncate">{value || placeholder}</span>
+        <Icon name="calendar" size={18} className="shrink-0 text-(--p-muted)" />
+      </button>
     </div>
   );
 }

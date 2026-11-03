@@ -1,4 +1,5 @@
 import { HomePage } from "@/components/marketing/HomePage";
+import { getPublicPlans } from "@/lib/api/plans";
 import { pageMetadata } from "@/lib/seo";
 
 const title = "StayOwned — your own direct booking website";
@@ -7,6 +8,10 @@ const description =
 
 export const metadata = { ...pageMetadata({ title, description, path: "/" }), title: { absolute: title } };
 
-export default function Page() {
-  return <HomePage />;
+// The pricing section shows the plans of the back office (fresh on each request).
+export const instant = false;
+
+export default async function Page() {
+  const plans = await getPublicPlans();
+  return <HomePage plans={plans} />;
 }

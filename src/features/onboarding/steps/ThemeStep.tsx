@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Notice } from "@/components/ui/Card";
 import { Icon } from "@/components/ui/Icon";
-import { bookingLinkHost } from "@/config/site";
+import { useBookingLink } from "@/lib/booking-link";
 import { AMENITIES } from "@/data/amenities";
 import { signupApi, type ApiTheme } from "@/lib/api/signup";
 import { DEFAULT_PRICE_FORMAT, formatAdminPrice } from "@/lib/price-format";
@@ -24,6 +24,7 @@ import { hrefForNextStep, LIVE_HREF } from "../steps";
  * (ThemePreviewDialog) is switched off for now.
  */
 export function ThemeStep() {
+  const { base: bookingLinkHost } = useBookingLink();
   const router = useRouter();
   const { token, state } = useSignupSession();
   const [themes, setThemes] = useState<ApiTheme[] | null>(null);
@@ -36,6 +37,17 @@ export function ThemeStep() {
   const [freeId, setFreeId] = useState<string | null>(null);
   // Paid theme the host tried to choose (opens the plans).
   const [upgrade, setUpgrade] = useState<{ theme: ApiTheme | null } | null>(null);
+  // Names of the plans with more themes (back office > Subscriptions > Plans)
+  const [themePlans, setThemePlans] = useState<string[]>([]);
+  useEffect(() => {
+    let live = true;
+    void signupApi.plans(token).then((result) => {
+      if (live && result.ok) setThemePlans(result.data.plans.filter((plan) => plan.includes_themes).map((plan) => plan.name));
+    });
+    return () => {
+      live = false;
+    };
+  }, [token]);
 
   const name = state?.property?.name || "your property";
   const draft = useDraft();
@@ -71,7 +83,7 @@ export function ThemeStep() {
       morePhotos: (state?.photos ?? []).slice(1, 5).map((photo) => photo.thumb_url || photo.url),
       link: `${bookingLinkHost}/${draft.property.slug || "your-page"}`,
     };
-  }, [state, draft]);
+  }, [state, draft, bookingLinkHost]);
 
   useEffect(() => {
     let active = true;
@@ -153,7 +165,9 @@ export function ThemeStep() {
 
       {themes && !allowed ? (
         <Notice tone="info" className="mt-6" title="The first theme is free">
-          The other themes come with the Pro and Business plans.{" "}
+          {themePlans.length > 0
+            ? `The other themes come with the ${themePlans.length > 1 ? `${themePlans.slice(0, -1).join(", ")} and ${themePlans[themePlans.length - 1]} plans` : `${themePlans[0]} plan`}.`
+            : "The other themes come with a paid plan."}{" "}
           <button
             type="button"
             onClick={() => setUpgrade({ theme: null })}

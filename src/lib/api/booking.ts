@@ -36,7 +36,10 @@ export interface BookingPaymentMethod {
 }
 
 export interface BookingSetup {
+  /** Stored link of the property (unique: "casanova", "casanova-2"). */
   slug: string;
+  /** Link of the company page (/stays/<company_slug>). */
+  company_slug?: string;
   property: {
     name: string;
     photo: string | null;
@@ -110,6 +113,8 @@ export interface BookingRequest {
 
 export interface BookingCreated {
   reference: string;
+  /** Secret key of the booking: needed (with the reference) to open its confirmation page. */
+  key: string;
   status: string;
   payment: { method: string; online: boolean; pay_url: string | null; bank_account: string };
   price: BookingQuote;
@@ -170,7 +175,7 @@ export const bookingApi = {
       terms: terms ? "1" : "",
     }),
 
-  status: (slug: string, ref: string) => apiRequest<BookingStatus>("pjActionBookingStatus", { slug, ref }),
+  status: (slug: string, ref: string, key: string) => apiRequest<BookingStatus>("pjActionBookingStatus", { slug, ref, key }),
 };
 
 /** Text of the back office with {TOKEN}s filled in. */

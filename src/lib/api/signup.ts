@@ -47,6 +47,8 @@ export interface SignupProperty {
   property_type?: string | null;
   /** Names of the property's amenities (Properties > Features in the back office). */
   amenities?: string[];
+  /** Stored link of the property on the website (/<slug>), unique even for two properties with the same name. */
+  slug?: string;
 }
 
 export type ContentTone = "warm" | "premium" | "simple";
@@ -177,6 +179,8 @@ export interface ApiPlan {
   includes_themes: boolean;
   /** Can be bought online (active, public, with a price). */
   purchasable: boolean;
+  /** Limits of the plan (null = unlimited). */
+  limits?: { max_properties: number | null; max_users: number | null; max_payment_gateways: number | null };
 }
 
 export type PaymentMethodId = "paypal" | "authorize" | "razorpay" | "stripe" | "cash";

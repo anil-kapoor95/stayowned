@@ -6,57 +6,12 @@ import { Button } from "@/components/ui/Button";
 import { Notice } from "@/components/ui/Card";
 import { Dialog } from "@/components/ui/Dialog";
 import { Icon } from "@/components/ui/Icon";
-import { PricingPlanCard, planCtaBase, planCtaClass, type PlanCardStyle } from "@/components/marketing/PricingPlanCard";
+import { PricingPlanCard, planCtaBase, planCtaClass } from "@/components/marketing/PricingPlanCard";
+import { formatPlanPrice, planCardStyle, planFeatureLines, planIncludes, planPeriodLabel } from "@/lib/plan-display";
 import { signupApi, type ApiPlan } from "@/lib/api/signup";
 import { cn } from "@/lib/utils";
 
 type PlansData = { plans: ApiPlan[]; current: { code: string; name: string; status: string } | null; myPlanUrl: string };
-
-function formatPrice(plan: ApiPlan): string {
-  if (plan.price === null) return "On request";
-  if (plan.price === 0) return "Free";
-  try {
-    return new Intl.NumberFormat("en", {
-      style: "currency",
-      currency: plan.currency,
-      maximumFractionDigits: Number.isInteger(plan.price) ? 0 : 2,
-    }).format(plan.price);
-  } catch {
-    return `${plan.price} ${plan.currency}`;
-  }
-}
-
-function periodLabel(plan: ApiPlan): string | undefined {
-  if (!plan.price) return undefined;
-  const unit = plan.billing_interval === "year" ? "year" : "month";
-  return plan.interval_count > 1 ? `/${plan.interval_count} ${unit}s` : `/${unit}`;
-}
-
-/** Does the plan include the feature the dialog is about (themes by default)? */
-function planIncludes(plan: ApiPlan, featureKey?: string): boolean {
-  return featureKey ? plan.features.some((feature) => feature.key === featureKey) : plan.includes_themes;
-}
-
-/** Pricing page look: plans without the feature plain, the first plan with it "Most popular", higher ones dark. */
-function cardStyle(plan: ApiPlan, plans: ApiPlan[], featureKey?: string): PlanCardStyle {
-  if (!planIncludes(plan, featureKey)) return "plain";
-  const firstWith = plans.find((item) => planIncludes(item, featureKey));
-  return firstWith?.id === plan.id ? "popular" : "dark";
-}
-
-/**
- * "Everything in Starter" + what the plan adds, as on the Pricing page: the base is the biggest
- * earlier plan whose features this plan all has; without one, every feature is listed.
- */
-function featureLines(plan: ApiPlan, earlier: ApiPlan[]): string[] {
-  const keys = new Set(plan.features.map((feature) => feature.key));
-  const base = earlier
-    .filter((other) => other.features.length < plan.features.length && other.features.every((f) => keys.has(f.key)))
-    .sort((x, y) => y.features.length - x.features.length)[0];
-  if (!base) return plan.features.map((feature) => feature.label);
-  const before = new Set(base.features.map((feature) => feature.key));
-  return [`Everything in ${base.name}`, ...plan.features.filter((f) => !before.has(f.key)).map((f) => f.label)];
-}
 
 /**
  * "Unlock premium themes": every plan from the back office (Subscriptions > Plans, active and public),
@@ -177,7 +132,7 @@ export function UpgradePlansDialog({
             aria-label="Plans"
           >
             {plans.map((plan, index) => {
-              const style = cardStyle(plan, plans, featureKey);
+              const style = planCardStyle(plan, plans, featureKey);
               const current = data.current?.code === plan.code;
               const cta = cn(planCtaBase, planCtaClass[style]);
               return (
@@ -185,10 +140,10 @@ export function UpgradePlansDialog({
                   key={plan.id}
                   compact
                   name={plan.name}
-                  price={formatPrice(plan)}
-                  period={periodLabel(plan)}
+                  price={formatPlanPrice(plan)}
+                  period={planPeriodLabel(plan)}
                   note={plan.trial_days > 0 && plan.price !== 0 ? `${plan.trial_days}-day free trial` : undefined}
-                  features={featureLines(plan, plans.slice(0, index))}
+                  features={planFeatureLines(plan, plans.slice(0, index))}
                   style={style}
                   badge={current ? "Current plan" : style === "popular" ? "Most popular" : undefined}
                   cta={

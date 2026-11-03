@@ -14,7 +14,18 @@ const fmtDay = (value: string) =>
 type Loaded = { ref: string; status: BookingStatus | null; error: string };
 
 /** After booking (and after the payment page): the booking as the back office has it now. */
-export function BookingConfirmed({ setup, reference }: { setup: BookingSetup; reference: string }) {
+export function BookingConfirmed({
+  setup,
+  reference,
+  bookingKey,
+  basePath,
+}: {
+  setup: BookingSetup;
+  reference: string;
+  bookingKey: string;
+  /** Path of the property on this website: "/casanova", or "" when it is the home page of the host's own domain. */
+  basePath: string;
+}) {
   const t = (key: string, tokens?: Record<string, string | number>) => label(setup.labels, key, tokens);
   const p = setup.property;
   const money = (amount: number) => formatAdminPrice(amount, p.currency_sign || p.currency, p.price_format);
@@ -22,14 +33,14 @@ export function BookingConfirmed({ setup, reference }: { setup: BookingSetup; re
 
   useEffect(() => {
     let live = true;
-    bookingApi.status(setup.slug, reference).then((result) => {
+    bookingApi.status(setup.slug, reference, bookingKey).then((result) => {
       if (!live) return;
       setLoaded(result.ok ? { ref: reference, status: result.data, error: "" } : { ref: reference, status: null, error: result.message });
     });
     return () => {
       live = false;
     };
-  }, [setup.slug, reference]);
+  }, [setup.slug, reference, bookingKey]);
 
   const current = loaded && loaded.ref === reference ? loaded : null;
   const b = current?.status ?? null;
@@ -110,7 +121,7 @@ export function BookingConfirmed({ setup, reference }: { setup: BookingSetup; re
               </a>
             ) : null}
             <Link
-              href={`/property/${setup.slug}`}
+              href={basePath || "/"}
               className="inline-flex h-11 flex-1 items-center justify-center gap-1 rounded-[0.75rem] border border-(--p-line) px-5 font-heading font-semibold hover:border-(--p-accent)"
             >
               <Icon name="chevronLeft" size={15} /> {t("book_back_to_property")}

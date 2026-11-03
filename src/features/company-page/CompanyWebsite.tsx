@@ -1,5 +1,6 @@
 "use client";
 
+import { BrandingBar, BrandingFooter } from "@/features/property-page/Branding";
 import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { Icon, type IconName } from "@/components/ui/Icon";
@@ -10,39 +11,19 @@ import { cn } from "@/lib/utils";
 import { themeStyle } from "@/features/property-page/theme";
 
 const card = "rounded-[1rem] border border-(--p-line) bg-(--p-card)";
-const accentButton =
-  "inline-flex items-center justify-center gap-2 rounded-[0.625rem] bg-(--p-accent) px-5 font-heading font-bold text-white transition-[filter] hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--p-accent) focus-visible:ring-offset-2";
 
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
 const capitalize = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
 
-/** Company page (/stays/<company>): every property of the host, each card opens its own page (/property/<slug>). */
+/** Company page (/stays/<company>, or the home page of the host's own domain): every property, each card opens /<slug>. */
 export function CompanyWebsite({ page }: { page: CompanyPageData }) {
   const [place, setPlace] = useState<string | null>(null);
   const shown = place ? page.properties.filter((p) => p.location.city === place) : page.properties;
   const count = page.properties.length;
-  const contact = page.email ? `mailto:${page.email}` : page.phone ? `tel:${page.phone.replace(/[^\d+]/g, "")}` : null;
 
   return (
     <div style={themeStyle(page.theme)} className="flex flex-1 flex-col bg-(--p-page) text-(--p-text)">
-      {page.branding !== false ? (
-        <p className="bg-(--p-brand) py-2 text-center text-[0.75rem] font-medium text-white/80">
-          <span aria-hidden="true" className="mr-1.5 inline-block size-1.5 rounded-full bg-(--p-accent) align-middle" />
-          Designed by <strong className="text-white">PHPJabbers</strong>
-        </p>
-      ) : null}
-
-      <header className="sticky top-0 z-30 border-b border-(--p-line) bg-(--p-card)/95 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-          <a href="#stays" className="flex min-w-0 items-center gap-2.5">
-            <Mark name={page.name} logo={page.logo} className="size-9 text-[0.875rem]" />
-            <span className="truncate font-heading text-[1.125rem] font-bold">{page.name}</span>
-          </a>
-          {contact ? (
-            <a href={contact} className={cn(accentButton, "h-10 shrink-0 text-[0.875rem]")}>Contact host</a>
-          ) : null}
-        </div>
-      </header>
+      <BrandingBar show={page.branding} line={page.branding_line} />
 
       <section className="border-b border-(--p-line) bg-(--p-card)">
         <div className="mx-auto flex max-w-6xl flex-col gap-5 px-4 py-9 sm:flex-row sm:items-center sm:px-6">
@@ -89,7 +70,8 @@ export function CompanyWebsite({ page }: { page: CompanyPageData }) {
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-6 text-[0.8125rem] text-(--p-muted) sm:px-6">
           <p>© {page.name}</p>
           <p>
-            © {new Date().getFullYear()} All Rights Reserved{page.branding !== false ? " | Website by PHPJabbers" : ""}
+            © {new Date().getFullYear()} All Rights Reserved
+            <BrandingFooter show={page.branding} line={page.branding_line} />
           </p>
         </div>
       </footer>
@@ -137,7 +119,7 @@ function StayCard({ property, priceFormat }: { property: CompanyPageProperty; pr
 
   return (
     <Link
-      href={`/property/${property.slug}`}
+      href={`/${property.slug}`}
       className={cn(card, "group flex h-full flex-col overflow-hidden transition-shadow hover:shadow-[0_12px_30px_rgba(17,24,39,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--p-accent)")}
     >
       <div className="relative aspect-[4/3] overflow-hidden bg-(--p-soft)">

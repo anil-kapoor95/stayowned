@@ -5,13 +5,15 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
 import { THEMES } from "@/data/themes";
+import type { ApiPlan } from "@/lib/api/signup";
+import { formatPlanPrice, planCardLines, planCardStyle, planPeriodLabel } from "@/lib/plan-display";
 import { cn } from "@/lib/utils";
 import { FaqAccordion } from "./FaqAccordion";
 import { HOME_FAQS } from "./faq-data";
 import { CheckItem, CtaBanner, Eyebrow, SectionHeader } from "./ui";
 
 /** Home page from the Figma "Homepage" frame. Photos are the project's placeholder images. */
-export function HomePage() {
+export function HomePage({ plans = [] }: { plans?: ApiPlan[] }) {
   return (
     <>
       <Hero />
@@ -21,7 +23,7 @@ export function HomePage() {
       <FeatureCards />
       <AiAssistant />
       <Themes />
-      <Pricing />
+      <Pricing plans={plans} />
       <section aria-labelledby="home-faq-title" className="bg-primary-tint py-section">
         <div className="container-page">
           <SectionHeader id="home-faq-title" eyebrow="Good to know" title="Frequently asked questions" />
@@ -695,56 +697,27 @@ function Themes() {
 
 /* ----------------------------------------------------------- Pricing */
 
-function Pricing() {
-  const plans = [
-    {
-      name: "Starter",
-      price: "Free",
-      period: "",
-      features: [
-        "stayowned.com/your-property",
-        "1 property listing · Clean theme",
-        "AI-written description & highlights",
-        "1 payment gateway (Razorpay / Stripe)",
-        "Direct WhatsApp sharing bar",
-        "0% platform commissions",
-      ],
-      cta: { label: "Start free", href: "/setup/account" },
-      style: "plain" as const,
-    },
-    {
-      name: "Pro",
-      price: "₹1,499",
-      period: "/month",
-      features: [
-        "Everything in Starter",
-        "Your own custom domain (SSL included)",
-        "Airbnb & Booking.com 2-way calendar sync",
-        "Multiple payment gateways (UPI, PayPal, Stripe)",
-        "Unlock all 4 premium designer themes",
-        "Discount coupons & promotional pricing",
-        "Custom SEO tags & visitor analytics",
-      ],
-      cta: { label: "Go Pro — 14-day trial", href: "/pricing" },
-      style: "popular" as const,
-    },
-    {
-      name: "Business · AI",
-      price: "₹3,499",
-      period: "/month",
-      features: [
-        "Everything in Pro",
-        "24/7 AI concierge on your website & WhatsApp",
-        "Answers questions from your house rules",
-        "Real-time availability and rate quotes",
-        "Direct checkout guidance for inquiring guests",
-        "Multi-property management dashboard",
-        "Dedicated WhatsApp onboarding manager",
-      ],
-      cta: { label: "Join waitlist", href: "/contact" },
-      style: "dark" as const,
-    },
-  ];
+function Pricing({ plans: apiPlans }: { plans: ApiPlan[] }) {
+  // Plans from the back office (Subscriptions > Plans), shown like the Pricing page
+  const plans = apiPlans.map((plan, index) => {
+    const cta =
+      plan.price === null
+        ? { label: "Contact us", href: "/contact" }
+        : plan.price === 0
+          ? { label: "Start free", href: "/setup/account" }
+          : plan.trial_days > 0
+            ? { label: `Start ${plan.trial_days}-day free trial`, href: "/setup/account" }
+            : { label: `Get ${plan.name}`, href: "/setup/account" };
+    return {
+      name: plan.name,
+      price: formatPlanPrice(plan),
+      period: planPeriodLabel(plan),
+      features: planCardLines(plan, apiPlans.slice(0, index), 7),
+      cta,
+      style: planCardStyle(plan, apiPlans),
+    };
+  });
+  if (plans.length === 0) return null;
   return (
     <section aria-labelledby="pricing-title" className="container-page py-section">
       <SectionHeader
@@ -753,7 +726,7 @@ function Pricing() {
         title="Simple pricing"
         description="Start free. Upgrade when you want your own domain."
       />
-      <ul className="mx-auto mt-12 grid max-w-5xl grid-cols-1 items-start gap-6 lg:grid-cols-3">
+      <ul className={cn("mx-auto mt-12 grid max-w-5xl grid-cols-1 items-start gap-6", plans.length >= 3 ? "lg:grid-cols-3" : plans.length === 2 ? "md:grid-cols-2 max-w-3xl" : "max-w-sm")}>
         {plans.map((plan) => {
           const dark = plan.style === "dark";
           return (

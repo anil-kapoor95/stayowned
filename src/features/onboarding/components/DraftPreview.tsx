@@ -4,7 +4,7 @@ import { useState } from "react";
 import { PropertyDetails } from "@/components/property/PropertyDetails";
 import { Button } from "@/components/ui/Button";
 import { Icon, WhatsAppMark } from "@/components/ui/Icon";
-import { bookingLinkHost } from "@/config/site";
+import { useBookingLink } from "@/lib/booking-link";
 import { cn } from "@/lib/utils";
 import { draftToProperty } from "../draft-to-property";
 import { useDraft } from "../draft-store";
@@ -32,6 +32,7 @@ function GuestPage() {
  * over the page in a browser window, or in a phone (an iframe, so the mobile layout is real).
  */
 export function DraftPreview() {
+  const { base: bookingLinkHost, scheme: linkScheme } = useBookingLink();
   const draft = useDraft();
   const { state } = useSignupSession();
   const [device, setDevice] = useState<Device>("desktop");
@@ -43,7 +44,7 @@ export function DraftPreview() {
 
   async function copyLink() {
     try {
-      await navigator.clipboard.writeText(`https://${link}`);
+      await navigator.clipboard.writeText(`${linkScheme}${link}`);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2500);
     } catch {
@@ -115,7 +116,7 @@ export function DraftPreview() {
             <Button
               variant="whatsapp"
               size="sm"
-              href={`https://wa.me/?text=${encodeURIComponent(`Book ${property.name} directly here: https://${link}`)}`}
+              href={`https://wa.me/?text=${encodeURIComponent(`Book ${property.name} directly here: ${linkScheme}${link}`)}`}
               external
             >
               <WhatsAppMark size={15} /> Share
@@ -148,7 +149,7 @@ export function DraftPreview() {
               </span>
               <span className="mx-auto flex min-w-0 max-w-md flex-1 items-center justify-center gap-2 truncate rounded-sm bg-surface-muted px-3 py-1 text-caption text-body">
                 <Icon name="lock" size={11} className="shrink-0 text-success" />
-                https://{link}
+                {linkScheme}{link}
               </span>
               <span className="w-12" />
             </div>

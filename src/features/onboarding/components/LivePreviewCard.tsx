@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { SafeImage } from "@/components/ui/SafeImage";
 import { getAmenity, PROPERTY_TYPE_LABELS } from "@/data/amenities";
-import { bookingLinkHost } from "@/config/site";
+import { useBookingLink } from "@/lib/booking-link";
 import { cn, formatPrice, pluralize } from "@/lib/utils";
 import type { Property } from "@/types/property";
 
@@ -21,6 +21,7 @@ export function LivePreviewCard({
   /** Writes an amount like the account does (its currency, price format and symbol place). */
   formatAmount?: (amount: number) => string;
 }) {
+  const { base: bookingLinkHost, scheme: linkScheme } = useBookingLink();
   const cover = property.images[0];
   const typeLabel = `Entire private ${PROPERTY_TYPE_LABELS[property.type].toLowerCase()}`;
   const place = [property.location.locality, property.location.region].filter(Boolean).join(", ");
@@ -43,7 +44,7 @@ export function LivePreviewCard({
           </span>
           <span className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-sm bg-surface-muted px-3 py-1 text-caption">
             <span className="truncate text-body">
-              https://{bookingLinkHost}/
+              {linkScheme}{bookingLinkHost}/
               <strong className="font-bold text-primary-strong">{property.slug || "your-page"}</strong>
             </span>
             <span className="shrink-0 rounded-sm bg-success-soft px-1.5 py-px text-micro font-bold text-success">

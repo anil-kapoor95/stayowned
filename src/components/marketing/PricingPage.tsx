@@ -1,13 +1,15 @@
 import Link from "next/link";
-import { PLANS, PLAN_STATS, type Plan } from "@/data/plans";
+import { PLAN_STATS } from "@/data/plans";
+import type { ApiPlan } from "@/lib/api/signup";
+import { formatPlanPrice, planCardLines, planCardStyle, planPeriodLabel } from "@/lib/plan-display";
 import { cn } from "@/lib/utils";
 import { DisplaySectionHeader, FaqSection, LaunchCta } from "./display";
 import { PRICING_FAQS } from "./faq-data";
 import { HeroAccent, PageHero } from "./PageHero";
 import { PricingPlanCard, planCtaBase, planCtaClass } from "./PricingPlanCard";
 
-/** "Pricing" page from the Figma "pricing page" frame (132:478). */
-export function PricingPage() {
+/** "Pricing" page from the Figma "pricing page" frame (132:478). The plans come from the back office. */
+export function PricingPage({ plans }: { plans: ApiPlan[] }) {
   return (
     <div className="bg-surface">
       <PageHero
@@ -22,7 +24,7 @@ export function PricingPage() {
         }
         intro="No commissions. No hidden fees. Just the tools you need to turn more lookers into bookers."
       />
-      <Plans />
+      <Plans plans={plans} />
       <Stats />
       <FaqSection id="pricing-faq-title" items={PRICING_FAQS} />
       <LaunchCta />
@@ -32,7 +34,7 @@ export function PricingPage() {
 
 /* ------------------------------------------------------------ Plans */
 
-function Plans() {
+function Plans({ plans }: { plans: ApiPlan[] }) {
   return (
     <section aria-labelledby="plans-title" className="pb-section pt-[49px] sm:pb-[104px]">
       <div className="container-page">
@@ -42,28 +44,52 @@ function Plans() {
           title="Simple pricing"
           description="Start free. Upgrade when you want your own domain."
         />
-        <ul className="mx-auto mt-[67px] grid max-w-[1112px] grid-cols-1 items-start gap-6 md:grid-cols-3">
-          {PLANS.map((plan) => (
-            <PlanCard key={plan.id} plan={plan} />
-          ))}
-        </ul>
+        {plans.length === 0 ? (
+          <p className="mx-auto mt-[67px] max-w-[560px] text-center text-body">
+            Plans are being updated. <Link href="/contact" className="font-semibold text-heading underline underline-offset-2">Contact us</Link> for prices.
+          </p>
+        ) : (
+          <ul
+            className={cn(
+              "mx-auto mt-[67px] grid max-w-[1112px] grid-cols-1 items-start gap-6",
+              plans.length === 2 && "md:grid-cols-2 md:max-w-[760px]",
+              plans.length >= 3 && "md:grid-cols-3",
+              plans.length === 1 && "max-w-[400px]",
+            )}
+          >
+            {plans.map((plan, index) => (
+              <PlanCard key={plan.id} plan={plan} plans={plans} index={index} />
+            ))}
+          </ul>
+        )}
       </div>
     </section>
   );
 }
 
-function PlanCard({ plan }: { plan: Plan }) {
+/** Call to action of a plan: free / trial / on request / paid. */
+function planCta(plan: ApiPlan): { label: string; href: string } {
+  if (plan.price === null) return { label: "Contact us", href: "/contact" };
+  if (plan.price === 0) return { label: "Start free", href: "/setup/account" };
+  if (plan.trial_days > 0) return { label: `Start ${plan.trial_days}-day free trial`, href: "/setup/account" };
+  return { label: `Get ${plan.name}`, href: "/setup/account" };
+}
+
+function PlanCard({ plan, plans, index }: { plan: ApiPlan; plans: ApiPlan[]; index: number }) {
+  const style = planCardStyle(plan, plans);
+  const cta = planCta(plan);
   return (
     <PricingPlanCard
       name={plan.name}
-      price={plan.price}
-      period={plan.period}
-      features={plan.features}
-      style={plan.style}
-      badge={plan.style === "popular" ? "Most popular" : undefined}
+      price={formatPlanPrice(plan)}
+      period={planPeriodLabel(plan)}
+      note={plan.trial_days > 0 && plan.price ? `${plan.trial_days}-day free trial` : undefined}
+      features={planCardLines(plan, plans.slice(0, index))}
+      style={style}
+      badge={style === "popular" ? "Most popular" : undefined}
       cta={
-        <Link href={plan.cta.href} className={cn(planCtaBase, planCtaClass[plan.style])}>
-          {plan.cta.label}
+        <Link href={cta.href} className={cn(planCtaBase, planCtaClass[style])}>
+          {cta.label}
         </Link>
       }
     />

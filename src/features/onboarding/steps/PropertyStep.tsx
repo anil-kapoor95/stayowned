@@ -9,7 +9,7 @@ import { Counter } from "@/components/ui/Counter";
 import { SelectField, TextField } from "@/components/ui/Field";
 import { Icon } from "@/components/ui/Icon";
 import { AMENITIES, PROPERTY_TYPE_LABELS, amenityKey, amenityNamesForSave, splitAmenityNames } from "@/data/amenities";
-import { bookingLinkHost } from "@/config/site";
+import { useBookingLink } from "@/lib/booking-link";
 import { mapAmenities, mapPropertyType, type AirbnbImportResponse } from "@/lib/airbnb-import";
 import { signupApi } from "@/lib/api/signup";
 import { DEFAULT_PRICE_FORMAT, formatAdminPrice, type PriceFormat } from "@/lib/price-format";
@@ -57,6 +57,7 @@ interface ImportReview {
   notes: string[];
 }
 export function PropertyStep() {
+  const { base: bookingLinkHost } = useBookingLink();
   const router = useRouter();
   const draft = useDraft();
   const { token, state } = useSignupSession();
